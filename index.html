@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual HQ — Trial</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --ink: #0B2027;
+    --ink-soft: #123039;
+    --paper: #FFFFFF;
+    --mist: #EAF6F7;
+    --slate: #5C7680;
+    --aqua: #00FFFF;
+    --deep-aqua: #0089A3;
+
+    --bg: var(--ink);
+    --surface: var(--paper);
+    --surface-alt: var(--mist);
+    --border: #D6E3E5;
+    --text-main: var(--ink);
+    --text-soft: var(--slate);
+    --text-inverse: var(--paper);
+    --accent: var(--deep-aqua);
+    --shadow: rgba(11,32,39,0.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #071820;
+      --surface: #0F262E;
+      --surface-alt: #15303A;
+      --border: rgba(234,246,247,0.12);
+      --text-main: #EAF6F7;
+      --text-soft: #8FA7AE;
+      --accent: var(--aqua);
+      --shadow: rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #071820;
+    --surface: #0F262E;
+    --surface-alt: #15303A;
+    --border: rgba(234,246,247,0.12);
+    --text-main: #EAF6F7;
+    --text-soft: #8FA7AE;
+    --accent: var(--aqua);
+    --shadow: rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: Calibri, Carlito, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2 { font-family: Cambria, Georgia, 'Times New Roman', serif; }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  .trial-banner {
+    background: var(--deep-aqua);
+    color: var(--paper);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 12px;
+    letter-spacing: 0.03em;
+  }
+
+  header.top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 3px solid var(--deep-aqua);
+  }
+  header.top h1 { font-size: 27px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; color: var(--paper); }
+  header.top p { margin: 0; color: #9FB8BE; font-size: 14px; }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9FB8BE; }
+  .who select {
+    font-family: Calibri, Carlito, Arial, sans-serif;
+    font-size: 13px; background: var(--ink-soft); color: var(--paper);
+    border: 1px solid #274852; border-radius: 4px; padding: 6px 8px;
+  }
+
+  nav.tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 24px; padding-bottom: 2px; }
+  nav.tabs button {
+    flex: none; background: transparent; border: none; border-bottom: 3px solid transparent;
+    color: #7C99A0; font-family: Calibri, Carlito, Arial, sans-serif; font-weight: 700;
+    font-size: 13.5px; letter-spacing: 0.01em; padding: 10px 14px; cursor: pointer;
+  }
+  nav.tabs button.active { color: var(--paper); border-bottom-color: var(--aqua); }
+
+  section.panel { background: var(--surface); border-radius: 8px; padding: 22px; box-shadow: 0 8px 24px var(--shadow); }
+
+  .totals-strip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px;
+    background: var(--border); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; margin-bottom: 22px;
+  }
+  .totals-strip .cell { background: var(--surface); padding: 14px 16px; }
+  .totals-strip .cell .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-soft); margin-bottom: 6px; }
+  .totals-strip .cell .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .totals-strip .cell.grand .value { color: var(--accent); }
+
+  .cat-block { margin-bottom: 22px; }
+  .cat-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 10px; }
+  .cat-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
+  .cat-head .subtotal { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-soft); }
+
+  .item-row { display: grid; grid-template-columns: 1fr 100px 110px 96px 28px; gap: 10px; align-items: center; padding: 9px 6px; border-radius: 4px; }
+  .item-row:hover { background: var(--surface-alt); }
+  .item-name { font-size: 14px; }
+  .item-name .note { display: block; font-size: 11.5px; color: var(--text-soft); margin-top: 1px; }
+  .item-cost {
+    font-family: Calibri, Carlito, Arial, sans-serif; font-variant-numeric: tabular-nums; font-size: 13px;
+    text-align: right; background: transparent; border: 1px solid transparent; border-radius: 3px;
+    padding: 3px 6px; width: 100%; color: var(--text-main);
+  }
+  .item-cost:hover, .item-cost:focus { border-color: var(--border); background: var(--surface); outline: none; }
+  .status-pill {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; text-align: center;
+    padding: 5px 4px; border-radius: 3px; cursor: pointer; border: 1px solid transparent; user-select: none; font-weight: 600;
+  }
+  .status-wishlist { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
+  .status-researched { background: var(--surface-alt); color: var(--deep-aqua); }
+  .status-ordered { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
+  .status-received { background: var(--deep-aqua); color: var(--paper); }
+  .status-gear-available { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
+  .status-gear-in-use { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
+  .status-gear-needs-repair { background: var(--deep-aqua); color: var(--paper); }
+  .status-gear-missing { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-contact-contact { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
+  .status-contact-client { background: var(--deep-aqua); color: var(--paper); }
+  .status-contact-vendor { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
+  .status-contact-collaborator { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-project-not-started { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
+  .status-project-in-progress { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
+  .status-project-blocked { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-project-done { background: var(--deep-aqua); color: var(--paper); }
+  .who-owner-pill { background: var(--deep-aqua); color: var(--paper); font-weight: 700; text-align: center; }
+  .status-todo-not-done { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
+  .status-todo-done { background: var(--deep-aqua); color: var(--paper); text-decoration: line-through; }
+
+  .asst-intro { padding: 4px 4px 18px; }
+  .asst-intro h2 { font-size: 17px; margin: 0 0 6px; }
+  .asst-intro p { margin: 0; color: var(--text-soft); font-size: 13.5px; line-height: 1.5; }
+  .asst-log { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; max-height: 50vh; overflow-y: auto; }
+  .asst-bubble { max-width: 78%; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.45; }
+  .asst-bubble.user { align-self: flex-end; background: var(--deep-aqua); color: var(--paper); }
+  .asst-bubble.assistant { align-self: flex-start; background: var(--surface-alt); color: var(--text-main); }
+  .asst-bubble.thinking { align-self: flex-start; background: var(--surface-alt); color: var(--text-soft); font-style: italic; }
+  .asst-bubble.error { align-self: flex-start; background: rgba(0,137,163,0.12); color: var(--deep-aqua); border: 1px solid var(--deep-aqua); }
+  .asst-pending { background: var(--surface-alt); border: 1px solid var(--deep-aqua); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .asst-pending h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); margin: 0 0 10px; }
+  .asst-pending ul { margin: 0 0 12px; padding-left: 18px; }
+  .asst-pending li { font-size: 14px; margin-bottom: 4px; }
+  .asst-pending-actions { display: flex; gap: 10px; }
+  .asst-confirm-btn { background: var(--deep-aqua); color: var(--paper); border: none; border-radius: 4px; font-family: Calibri, Carlito, Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 8px 16px; cursor: pointer; }
+  .asst-cancel-btn { background: transparent; color: var(--text-soft); border: 1px solid var(--border); border-radius: 4px; font-family: Calibri, Carlito, Arial, sans-serif; font-size: 13px; padding: 8px 16px; cursor: pointer; }
+  .asst-input-row { display: flex; gap: 8px; }
+  .asst-input-row input {
+    flex: 1; font-family: Calibri, Carlito, Arial, sans-serif; font-size: 14px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); color: var(--text-main);
+  }
+  .asst-input-row button { padding: 10px 16px; }
+  .asst-input-row button:disabled { opacity: 0.5; cursor: default; }
+  .mic-btn {
+    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px;
+    width: 40px; font-size: 16px; cursor: pointer; color: var(--text-main);
+  }
+  .mic-btn.listening { background: var(--deep-aqua); color: var(--paper); border-color: var(--deep-aqua); }
+
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-header h2 { font-size: 18px; font-weight: 700; margin: 0; }
+  .cal-nav { display: flex; align-items: center; gap: 8px; }
+  .cal-nav-btn { background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; width: 32px; height: 32px; font-size: 15px; cursor: pointer; }
+  .cal-nav-btn:hover { background: var(--deep-aqua); color: var(--paper); }
+  .cal-today-btn { background: transparent; border: 1px solid var(--deep-aqua); color: var(--deep-aqua); border-radius: 4px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+  .cal-weekday { background: var(--surface-alt); padding: 8px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); text-align: center; }
+  .cal-day { background: var(--surface); min-height: 84px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+  .cal-day:hover { background: var(--surface-alt); }
+  .cal-day.outside { opacity: 0.35; }
+  .cal-day.today { box-shadow: inset 0 0 0 2px var(--deep-aqua); }
+  .cal-day.selected { background: var(--surface-alt); box-shadow: inset 0 0 0 2px var(--aqua); }
+  .cal-day-num { font-size: 12px; font-weight: 700; color: var(--text-soft); }
+  .cal-day.today .cal-day-num { color: var(--deep-aqua); }
+  .cal-chip { font-size: 10px; padding: 2px 4px; border-radius: 3px; background: var(--surface-alt); color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-chip.conflict { background: var(--deep-aqua); color: var(--paper); }
+  .cal-chip-more { font-size: 10px; color: var(--text-soft); }
+  .cal-day-panel-inner { background: var(--surface); border-radius: 8px; padding: 18px 20px; }
+  .cal-day-panel-inner h3 { font-size: 15px; margin: 0 0 10px; }
+  .cal-entry { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .cal-entry:last-of-type { border-bottom: none; }
+  .cal-entry.conflict { background: rgba(0,137,163,0.08); border-radius: 4px; padding-left: 6px; padding-right: 6px; }
+  .cal-entry-main { flex: 1; }
+  .cal-entry-time { font-size: 11.5px; color: var(--deep-aqua); font-weight: 600; }
+  .cal-entry-what { font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .cal-entry-note { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+  .cal-conflict-badge { font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: var(--deep-aqua); margin-top: 3px; }
+  .cal-add-row { display: grid; grid-template-columns: 110px 90px 90px 1fr 1fr 90px; gap: 8px; margin-top: 12px; }
+  .cal-add-row select, .cal-add-row input {
+    font-family: Calibri, Carlito, Arial, sans-serif; font-size: 13px; padding: 8px 9px;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--surface-alt); color: var(--text-main); width: 100%;
+  }
+  @media (max-width: 720px) {
+    .cal-day { min-height: 56px; }
+    .cal-chip { display: none; }
+    .cal-add-row { grid-template-columns: 1fr 1fr; }
+  }
+  .del-btn { background: none; border: none; color: var(--text-soft); font-size: 16px; cursor: pointer; line-height: 1; padding: 8px; min-width: 32px; min-height: 32px; }
+  .del-btn:hover { color: var(--deep-aqua); }
+  .del-btn.confirm { color: var(--paper); background: var(--deep-aqua); border-radius: 3px; font-size: 10.5px; font-weight: 700; padding: 8px 6px; }
+
+  .add-row { display: grid; grid-template-columns: 1.4fr 1fr 96px 96px; gap: 8px; margin-top: 10px; }
+  .add-row input, .add-row select {
+    font-family: Calibri, Carlito, Arial, sans-serif; font-size: 13px; padding: 8px 9px;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text-main); width: 100%;
+  }
+  .add-row input::placeholder { color: var(--text-soft); }
+  .add-btn { background: var(--deep-aqua); color: #fff; border: none; border-radius: 4px; font-family: Calibri, Carlito, Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 8px 12px; cursor: pointer; }
+  .add-btn:hover { background: #007289; }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-soft); font-size: 14px; }
+  .status-bar { font-size: 11.5px; color: var(--text-soft); margin-top: 14px; text-align: right; }
+
+  .money-privacy-note {
+    background: var(--surface-alt); border-left: 3px solid var(--accent); border-radius: 4px;
+    padding: 10px 14px; font-size: 12.5px; color: var(--text-soft); margin-bottom: 18px;
+  }
+  .money-lock { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+  .share-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text-soft);
+    border-radius: 3px; font-size: 10.5px; padding: 4px 7px; cursor: pointer; margin-left: 8px;
+  }
+  .share-btn:hover { border-color: var(--deep-aqua); color: var(--deep-aqua); }
+  .share-panel { background: var(--surface-alt); border-radius: 6px; padding: 12px 14px; margin: 6px 0 14px; font-size: 12.5px; }
+  .share-panel select { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 12.5px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); margin-right: 6px; }
+  .grant-tag { display: inline-flex; align-items: center; gap: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 3px 9px; font-size: 11px; margin: 4px 6px 0 0; }
+  .grant-tag button { background: none; border: none; color: var(--text-soft); cursor: pointer; font-size: 12px; padding: 0; }
+
+  @media (max-width: 640px) {
+    .item-row { grid-template-columns: 1fr 78px 88px 78px 24px; gap: 6px; }
+    .add-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="trial-banner">TRIAL MODE — no real logins or security enforced yet. For the five of you only, not for wider sharing.</div>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Virtual HQ</h1>
+      <p>Shared studio, one budget, three companies — trial build.</p>
+    </div>
+    <div class="who">
+      <span>Logged as</span>
+      <select id="whoSelect">
+        <option>Michael</option>
+        <option>Alex</option>
+        <option>Cindy</option>
+        <option>Japs</option>
+        <option>JB</option>
+      </select>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabNav">
+    <button class="active" data-tab="assistant">Assistant</button>
+    <button data-tab="money">Money</button>
+    <button data-tab="projects">Projects</button>
+    <button data-tab="contacts">Contacts</button>
+    <button data-tab="gear">Gear</button>
+    <button data-tab="calendar">Calendar</button>
+    <button data-tab="who">Who's Doing What</button>
+    <button data-tab="todos">To-dos</button>
+  </nav>
+
+  <section class="panel" id="assistantPanel">
+    <div class="asst-intro" id="asstIntro">
+      <h2>Tell it what happened</h2>
+      <p>One line is enough — "meeting with Diane at 10am tomorrow, and I have the ZV-E10, add 'update the deck' to my MAAD to-dos." It sorts that into Calendar, Gear and To-dos, and checks with you before saving anything. You can also ask it questions, like "what's overdue for MAAD?"</p>
+    </div>
+    <div class="asst-log" id="asstLog"></div>
+    <div class="asst-pending" id="asstPending" style="display:none;"></div>
+    <div class="asst-input-row">
+      <input type="text" id="asstInput" placeholder="What's going on?" autocomplete="off">
+      <button class="mic-btn" id="asstMicBtn" title="Speak instead of typing" style="display:none;">🎤</button>
+      <button class="add-btn" id="asstSendBtn">Send</button>
+    </div>
+    <div class="status-bar" id="asstStatusBar"></div>
+  </section>
+
+  <section class="panel" id="moneyPanel" style="display:none;">
+    <div class="money-privacy-note">Trial preview of the money privacy model. Items only show if they belong to your company or a grant was made — but this is filtered in the app, not enforced by the database yet. Real Row-Level Security comes with the production build.</div>
+    <div class="totals-strip" id="moneyTotalsStrip"></div>
+    <div id="moneyCategoryList"></div>
+    <div class="status-bar" id="moneyStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="projectsPanel" style="display:none;">
+    <div class="totals-strip" id="projectsTotalsStrip"></div>
+    <div id="projectsCategoryList"></div>
+    <div class="status-bar" id="projectsStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="contactsPanel" style="display:none;">
+    <div class="totals-strip" id="contactsTotalsStrip"></div>
+    <div id="contactsCategoryList"></div>
+    <div class="status-bar" id="contactsStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="gearPanel" style="display:none;">
+    <div class="totals-strip" id="gearTotalsStrip"></div>
+    <div id="gearCategoryList"></div>
+    <div class="status-bar" id="gearStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="calendarPanel" style="display:none;">
+    <div class="totals-strip" id="calendarTotalsStrip"></div>
+    <div class="cal-header" id="calHeader"></div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div id="calDayPanel"></div>
+    <div class="status-bar" id="calendarStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="whoPanel" style="display:none;">
+    <div class="totals-strip" id="whoTotalsStrip"></div>
+    <div id="whoList"></div>
+    <div class="status-bar" id="whoStatusBar">loading...</div>
+  </section>
+
+  <section class="panel" id="todosPanel" style="display:none;">
+    <div class="totals-strip" id="todosTotalsStrip"></div>
+    <div id="todosCategoryList"></div>
+    <div class="status-bar" id="todosStatusBar">loading...</div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  // CONFIG — the only block you need to edit before deploying
+  // ============================================================
+  var SUPABASE_URL = 'https://tihcglsblwryuuwtljmn.supabase.co';
+  var SUPABASE_ANON_KEY = 'sb_publishable_gAGWQND9VzsmG1yVQ1tBew_P10I1_jx';
+  var AI_PROXY_URL = '/api/chat';
+  var AI_MODEL = 'claude-haiku-4-5-20251001';
+  var WHO_NAMES = ['Michael', 'Alex', 'Cindy', 'Japs', 'JB'];
+  // Which company each person belongs to, for the Money privacy preview.
+  var PERSON_COMPANY = {
+    'Michael': 'MAAD Solutions',
+    'Alex': 'Alexander & Co.',
+    'Cindy': 'Alexander & Co.',
+    'Japs': 'Pulse Narrative',
+    'JB': 'Pulse Narrative'
+  };
+  // ============================================================
+
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var COMPANIES = [];
+  var gearItems = [], contactItems = [], projectItems = [], calendarItems = [],
+      responsibilityItems = [], todoItems = [], moneyItems = [], moneyGrants = [];
+
+  var GEAR_CATEGORIES = ['Tech', 'Camera', 'Lighting', 'Podcast & Audio', 'Studio & Furniture'];
+  var GEAR_STATUSES = ['available', 'in-use', 'needs-repair', 'missing'];
+  var GEAR_STATUS_LABEL = { 'available': 'Available', 'in-use': 'In Use', 'needs-repair': 'Needs Repair', 'missing': 'Missing' };
+  var CONTACT_TAGS = ['contact', 'client', 'vendor', 'collaborator'];
+  var CONTACT_TAG_LABEL = { 'contact': 'Contact', 'client': 'Client', 'vendor': 'Vendor', 'collaborator': 'Collaborator' };
+  var PROJECT_STATUSES = ['not-started', 'in-progress', 'blocked', 'done'];
+  var PROJECT_STATUS_LABEL = { 'not-started': 'Not Started', 'in-progress': 'In Progress', 'blocked': 'Blocked', 'done': 'Done' };
+  var MONEY_STATUSES = ['wishlist', 'researched', 'ordered', 'received'];
+  var MONEY_STATUS_LABEL = { 'wishlist': 'Wishlist', 'researched': 'Researched', 'ordered': 'Ordered', 'received': 'Received' };
+  var TODO_STATUSES = ['not-done', 'done'];
+  var TODO_STATUS_LABEL = { 'not-done': 'Not Done', 'done': 'Done' };
+  var WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTH_LABELS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  var pendingGearDeleteId = null, pendingGearDeleteTimer = null;
+  var pendingContactDeleteId = null, pendingContactDeleteTimer = null;
+  var pendingProjectDeleteId = null, pendingProjectDeleteTimer = null;
+  var pendingCalDeleteId = null, pendingCalDeleteTimer = null;
+  var pendingWhoDeleteId = null, pendingWhoDeleteTimer = null;
+  var pendingTodoDeleteId = null, pendingTodoDeleteTimer = null;
+  var pendingMoneyDeleteId = null, pendingMoneyDeleteTimer = null;
+  var openShareItemId = null;
+
+  var chatTurns = [];
+  var pendingActions = null;
+  var asstBusy = false;
+  var recognizer = null, listening = false;
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function currentPerson() { return document.getElementById('whoSelect').value; }
+  function currentPersonCompanyName() { return PERSON_COMPANY[currentPerson()] || COMPANIES[0].name; }
+  function companyById(id) { return COMPANIES.find(function (c) { return c.id === id; }); }
+  function companyByName(name) { return COMPANIES.find(function (c) { return c.name === name; }); }
+  function todayISO() { var t = new Date(); return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()); }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function setStatus(elId, msg) {
+    var bar = document.getElementById(elId);
+    if (bar) bar.textContent = msg;
+  }
+
+  // ============================================================
+  // Generic Supabase helpers
+  // ============================================================
+  async function sbSelect(table) {
+    var res = await sb.from(table).select('*').order('created_at');
+    if (res.error) { console.error(table, res.error); return []; }
+    return res.data;
+  }
+  async function sbInsert(table, row) {
+    var res = await sb.from(table).insert(row).select();
+    if (res.error) { console.error(table, res.error); return null; }
+    return res.data[0];
+  }
+  async function sbUpdate(table, id, patch) {
+    var res = await sb.from(table).update(patch).eq('id', id);
+    if (res.error) { console.error(table, res.error); return false; }
+    return true;
+  }
+  async function sbDelete(table, id) {
+    var res = await sb.from(table).delete().eq('id', id);
+    if (res.error) { console.error(table, res.error); return false; }
+    return true;
+  }
+
+  // ============================================================
+  // WHO
+  // ============================================================
+  function initWho() {
+    var sel = document.getElementById('whoSelect');
+    var saved = localStorage.getItem('vhq-who');
+    if (saved && WHO_NAMES.indexOf(saved) !== -1) sel.value = saved;
+    sel.addEventListener('change', function () {
+      localStorage.setItem('vhq-who', sel.value);
+      renderMoney();
+    });
+  }
+
+  // ============================================================
+  // TABS
+  // ============================================================
+  function initTabs() {
+    var panels = {
+      assistant: 'assistantPanel', money: 'moneyPanel', projects: 'projectsPanel',
+      contacts: 'contactsPanel', gear: 'gearPanel', calendar: 'calendarPanel',
+      who: 'whoPanel', todos: 'todosPanel'
+    };
+    document.querySelectorAll('#tabNav button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#tabNav button').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var tab = btn.getAttribute('data-tab');
+        Object.keys(panels).forEach(function (key) {
+          document.getElementById(panels[key]).style.display = (key === tab) ? '' : 'none';
+        });
+      });
+    });
+  }
+
+  // ============================================================
+  // GEAR
+  // ============================================================
+  function renderGear() {
+    var counts = { available: 0, 'in-use': 0, 'needs-repair': 0, missing: 0 };
+    gearItems.forEach(function (g) { counts[g.status] = (counts[g.status] || 0) + 1; });
+    document.getElementById('gearTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total items</div><div class="value">' + gearItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">Available</div><div class="value">' + counts.available + '</div></div>' +
+      '<div class="cell"><div class="label">In use</div><div class="value">' + counts['in-use'] + '</div></div>' +
+      '<div class="cell"><div class="label">Needs attention</div><div class="value">' + (counts['needs-repair'] + counts.missing) + '</div></div>';
+
+    var list = document.getElementById('gearCategoryList');
+    var html = '';
+    GEAR_CATEGORIES.forEach(function (cat) {
+      var catItems = gearItems.filter(function (g) { return g.category === cat; });
+      html += '<div class="cat-block"><div class="cat-head"><h2>' + cat + '</h2><span class="subtotal">' + catItems.length + '</span></div>';
+      catItems.forEach(function (g) {
+        var pendingConfirm = pendingGearDeleteId === g.id;
+        html += '<div class="item-row" style="grid-template-columns: 1fr 140px 96px 28px;" data-id="' + g.id + '">';
+        html += '<div class="item-name">' + escapeHtml(g.name) + (g.note ? '<span class="note">' + escapeHtml(g.note) + '</span>' : '') + '</div>';
+        html += '<input class="item-cost gear-holder-input" type="text" value="' + escapeHtml(g.holder || '') + '" placeholder="who has it" data-id="' + g.id + '" style="text-align:left;">';
+        html += '<div class="status-pill gear-status-pill status-gear-' + g.status + '" data-id="' + g.id + '">' + GEAR_STATUS_LABEL[g.status] + '</div>';
+        html += '<button class="del-btn gear-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + g.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button>';
+        html += '</div>';
+      });
+      html += '<div class="add-row"><input type="text" class="new-gear-name" placeholder="Item name" data-cat="' + cat + '">' +
+        '<input type="text" class="new-gear-note" placeholder="Note (optional)" data-cat="' + cat + '">' +
+        '<input type="text" class="new-gear-holder" placeholder="Who has it (optional)" data-cat="' + cat + '">' +
+        '<button class="add-btn gear-add-btn" data-cat="' + cat + '">Add</button></div></div>';
+    });
+    list.innerHTML = html;
+    attachGearHandlers();
+  }
+  function attachGearHandlers() {
+    document.querySelectorAll('.gear-holder-input').forEach(function (el) {
+      el.addEventListener('change', async function () {
+        var g = gearItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!g) return;
+        g.holder = el.value.trim();
+        setStatus('gearStatusBar', 'saving...');
+        await sbUpdate('gear_items', g.id, { holder: g.holder });
+        setStatus('gearStatusBar', 'saved');
+      });
+    });
+    document.querySelectorAll('.gear-status-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var g = gearItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!g) return;
+        g.status = GEAR_STATUSES[(GEAR_STATUSES.indexOf(g.status) + 1) % GEAR_STATUSES.length];
+        renderGear();
+        await sbUpdate('gear_items', g.id, { status: g.status });
+      });
+    });
+    document.querySelectorAll('.gear-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingGearDeleteId === id) {
+          clearTimeout(pendingGearDeleteTimer); pendingGearDeleteId = null;
+          await sbDelete('gear_items', id);
+          gearItems = gearItems.filter(function (i) { return i.id !== id; });
+          renderGear();
+        } else {
+          pendingGearDeleteId = id; renderGear();
+          clearTimeout(pendingGearDeleteTimer);
+          pendingGearDeleteTimer = setTimeout(function () { pendingGearDeleteId = null; renderGear(); }, 6000);
+        }
+      });
+    });
+    document.querySelectorAll('.gear-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var cat = el.getAttribute('data-cat');
+        var container = el.closest('.add-row');
+        var nameInput = container.querySelector('.new-gear-name');
+        var name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        var row = {
+          name: name, category: cat,
+          note: container.querySelector('.new-gear-note').value.trim(),
+          holder: container.querySelector('.new-gear-holder').value.trim(),
+          status: 'available', created_by: currentPerson()
+        };
+        setStatus('gearStatusBar', 'saving...');
+        var saved = await sbInsert('gear_items', row);
+        if (saved) { gearItems.push(saved); renderGear(); setStatus('gearStatusBar', 'saved'); }
+      });
+    });
+  }
+
+  // ============================================================
+  // CONTACTS
+  // ============================================================
+  function renderContacts() {
+    var counts = { contact: 0, client: 0, vendor: 0, collaborator: 0 };
+    contactItems.forEach(function (c) { counts[c.tag] = (counts[c.tag] || 0) + 1; });
+    document.getElementById('contactsTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total contacts</div><div class="value">' + contactItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">Clients</div><div class="value">' + counts.client + '</div></div>' +
+      '<div class="cell"><div class="label">Vendors</div><div class="value">' + counts.vendor + '</div></div>' +
+      '<div class="cell"><div class="label">Collaborators</div><div class="value">' + counts.collaborator + '</div></div>';
+
+    var list = document.getElementById('contactsCategoryList');
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var secItems = contactItems.filter(function (c) { return c.company_id === co.id; });
+      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      secItems.forEach(function (c) {
+        var pendingConfirm = pendingContactDeleteId === c.id;
+        html += '<div class="item-row" style="grid-template-columns: 1fr 200px 110px 28px;" data-id="' + c.id + '">';
+        html += '<div class="item-name">' + escapeHtml(c.name) + (c.org ? '<span class="note">' + escapeHtml(c.org) + '</span>' : '') + '</div>';
+        html += '<input class="item-cost contact-info-input" type="text" value="' + escapeHtml(c.info || '') + '" placeholder="email or phone" data-id="' + c.id + '" style="text-align:left;">';
+        html += '<div class="status-pill contact-tag-pill status-contact-' + c.tag + '" data-id="' + c.id + '">' + CONTACT_TAG_LABEL[c.tag] + '</div>';
+        html += '<button class="del-btn contact-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + c.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+      });
+      html += '<div class="add-row" style="grid-template-columns: 1fr 1fr 1fr 96px;">' +
+        '<input type="text" class="new-contact-name" placeholder="Name" data-co="' + co.id + '">' +
+        '<input type="text" class="new-contact-org" placeholder="Company / role (optional)" data-co="' + co.id + '">' +
+        '<input type="text" class="new-contact-info" placeholder="Email or phone" data-co="' + co.id + '">' +
+        '<button class="add-btn contact-add-btn" data-co="' + co.id + '">Add</button></div></div>';
+    });
+    list.innerHTML = (contactItems.length === 0 ? '<div class="empty-state">No contacts yet. Add the first one below.</div>' : '') + html;
+    attachContactHandlers();
+  }
+  function attachContactHandlers() {
+    document.querySelectorAll('.contact-tag-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var c = contactItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!c) return;
+        c.tag = CONTACT_TAGS[(CONTACT_TAGS.indexOf(c.tag) + 1) % CONTACT_TAGS.length];
+        renderContacts();
+        await sbUpdate('contacts', c.id, { tag: c.tag });
+      });
+    });
+    document.querySelectorAll('.contact-info-input').forEach(function (el) {
+      el.addEventListener('change', async function () {
+        var c = contactItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!c) return;
+        c.info = el.value.trim();
+        await sbUpdate('contacts', c.id, { info: c.info });
+      });
+    });
+    document.querySelectorAll('.contact-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingContactDeleteId === id) {
+          clearTimeout(pendingContactDeleteTimer); pendingContactDeleteId = null;
+          await sbDelete('contacts', id);
+          contactItems = contactItems.filter(function (i) { return i.id !== id; });
+          renderContacts();
+        } else {
+          pendingContactDeleteId = id; renderContacts();
+          clearTimeout(pendingContactDeleteTimer);
+          pendingContactDeleteTimer = setTimeout(function () { pendingContactDeleteId = null; renderContacts(); }, 6000);
+        }
+      });
+    });
+    document.querySelectorAll('.contact-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var coId = el.getAttribute('data-co');
+        var container = el.closest('.add-row');
+        var nameInput = container.querySelector('.new-contact-name');
+        var name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        var row = {
+          name: name, company_id: coId,
+          org: container.querySelector('.new-contact-org').value.trim(),
+          info: container.querySelector('.new-contact-info').value.trim(),
+          tag: 'contact', created_by: currentPerson()
+        };
+        var saved = await sbInsert('contacts', row);
+        if (saved) { contactItems.push(saved); renderContacts(); }
+      });
+    });
+  }
+
+  // ============================================================
+  // PROJECTS
+  // ============================================================
+  function renderProjects() {
+    var counts = { 'not-started': 0, 'in-progress': 0, blocked: 0, done: 0 };
+    projectItems.forEach(function (p) { counts[p.status] = (counts[p.status] || 0) + 1; });
+    document.getElementById('projectsTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total projects</div><div class="value">' + projectItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">In progress</div><div class="value">' + counts['in-progress'] + '</div></div>' +
+      '<div class="cell"><div class="label">Blocked</div><div class="value">' + counts.blocked + '</div></div>' +
+      '<div class="cell"><div class="label">Done</div><div class="value">' + counts.done + '</div></div>';
+
+    var list = document.getElementById('projectsCategoryList');
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var secItems = projectItems.filter(function (p) { return p.company_id === co.id; });
+      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      secItems.forEach(function (p) {
+        var pendingConfirm = pendingProjectDeleteId === p.id;
+        html += '<div class="item-row" style="grid-template-columns: 1fr 160px 120px 28px;" data-id="' + p.id + '">';
+        html += '<div class="item-name">' + escapeHtml(p.name) + (p.note ? '<span class="note">' + escapeHtml(p.note) + '</span>' : '') + '</div>';
+        html += '<div class="item-name" style="font-size:13px;">' + escapeHtml(p.owner || '—') + '</div>';
+        html += '<div class="status-pill project-status-pill status-project-' + p.status + '" data-id="' + p.id + '">' + PROJECT_STATUS_LABEL[p.status] + '</div>';
+        html += '<button class="del-btn project-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + p.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+      });
+      html += '<div class="add-row" style="grid-template-columns: 1fr 1fr 1fr 96px;">' +
+        '<input type="text" class="new-project-name" placeholder="Project name" data-co="' + co.id + '">' +
+        '<input type="text" class="new-project-owner" placeholder="Owner" data-co="' + co.id + '">' +
+        '<input type="text" class="new-project-note" placeholder="Note (optional)" data-co="' + co.id + '">' +
+        '<button class="add-btn project-add-btn" data-co="' + co.id + '">Add</button></div></div>';
+    });
+    list.innerHTML = html;
+    attachProjectHandlers();
+  }
+  function attachProjectHandlers() {
+    document.querySelectorAll('.project-status-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var p = projectItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!p) return;
+        p.status = PROJECT_STATUSES[(PROJECT_STATUSES.indexOf(p.status) + 1) % PROJECT_STATUSES.length];
+        renderProjects();
+        await sbUpdate('projects', p.id, { status: p.status });
+      });
+    });
+    document.querySelectorAll('.project-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingProjectDeleteId === id) {
+          clearTimeout(pendingProjectDeleteTimer); pendingProjectDeleteId = null;
+          await sbDelete('projects', id);
+          projectItems = projectItems.filter(function (i) { return i.id !== id; });
+          renderProjects();
+        } else {
+          pendingProjectDeleteId = id; renderProjects();
+          clearTimeout(pendingProjectDeleteTimer);
+          pendingProjectDeleteTimer = setTimeout(function () { pendingProjectDeleteId = null; renderProjects(); }, 6000);
+        }
+      });
+    });
+    document.querySelectorAll('.project-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var coId = el.getAttribute('data-co');
+        var container = el.closest('.add-row');
+        var nameInput = container.querySelector('.new-project-name');
+        var name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        var row = {
+          name: name, company_id: coId,
+          owner: container.querySelector('.new-project-owner').value.trim(),
+          note: container.querySelector('.new-project-note').value.trim(),
+          status: 'not-started', created_by: currentPerson()
+        };
+        var saved = await sbInsert('projects', row);
+        if (saved) { projectItems.push(saved); renderProjects(); }
+      });
+    });
+  }
+
+  // ============================================================
+  // CALENDAR
+  // ============================================================
+  var calViewYear, calViewMonth, calSelectedDate = null;
+  function isoDate(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); }
+  function timeToMinutes(t) { if (!t) return null; var p = t.split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
+  function rangesOverlap(aS, aE, bS, bE) { return aS < bE && bS < aE; }
+  function conflictIdsForDate(dateStr) {
+    var dayEntries = calendarItems.filter(function (e) { return e.event_date === dateStr && e.start_time && e.end_time; });
+    var ids = {};
+    for (var i = 0; i < dayEntries.length; i++) {
+      for (var j = i + 1; j < dayEntries.length; j++) {
+        var a = dayEntries[i], b = dayEntries[j];
+        if (rangesOverlap(timeToMinutes(a.start_time), timeToMinutes(a.end_time), timeToMinutes(b.start_time), timeToMinutes(b.end_time))) {
+          ids[a.id] = true; ids[b.id] = true;
+        }
+      }
+    }
+    return ids;
+  }
+  function allConflictIds() {
+    var ids = {}, dates = {};
+    calendarItems.forEach(function (e) { dates[e.event_date] = true; });
+    Object.keys(dates).forEach(function (d) {
+      var c = conflictIdsForDate(d);
+      Object.keys(c).forEach(function (id) { ids[id] = true; });
+    });
+    return ids;
+  }
+  function formatDateLong(dateStr) {
+    var p = dateStr.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1, p[2]);
+    var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[d.getDay()] + ', ' + MONTH_LABELS[p[1] - 1] + ' ' + p[2] + ', ' + p[0];
+  }
+  function formatTimeRange(e) {
+    if (!e.start_time && !e.end_time) return 'All day';
+    if (e.start_time && e.end_time) return e.start_time.slice(0, 5) + '–' + e.end_time.slice(0, 5);
+    return (e.start_time || e.end_time).slice(0, 5);
+  }
+  function renderCalendar() {
+    if (calSelectedDate === null) calSelectedDate = todayISO();
+    if (calViewYear === undefined) { var t = new Date(); calViewYear = t.getFullYear(); calViewMonth = t.getMonth(); }
+    renderCalTotals(); renderCalHeader(); renderCalGrid(); renderCalDayPanel();
+  }
+  function renderCalTotals() {
+    var monthPrefix = calViewYear + '-' + pad2(calViewMonth + 1);
+    var thisMonthCount = calendarItems.filter(function (e) { return e.event_date.indexOf(monthPrefix) === 0; }).length;
+    var todayCount = calendarItems.filter(function (e) { return e.event_date === todayISO(); }).length;
+    var conflictCount = Object.keys(allConflictIds()).length;
+    document.getElementById('calendarTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total events</div><div class="value">' + calendarItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">This month</div><div class="value">' + thisMonthCount + '</div></div>' +
+      '<div class="cell"><div class="label">Today</div><div class="value">' + todayCount + '</div></div>' +
+      '<div class="cell"><div class="label">Conflicts</div><div class="value">' + conflictCount + '</div></div>';
+  }
+  function renderCalHeader() {
+    var header = document.getElementById('calHeader');
+    header.innerHTML = '<h2>' + MONTH_LABELS[calViewMonth] + ' ' + calViewYear + '</h2>' +
+      '<div class="cal-nav"><button class="cal-today-btn" id="calTodayBtn">Today</button>' +
+      '<button class="cal-nav-btn" id="calPrevBtn">‹</button><button class="cal-nav-btn" id="calNextBtn">›</button></div>';
+    document.getElementById('calPrevBtn').addEventListener('click', function () {
+      calViewMonth--; if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; } renderCalHeader(); renderCalGrid();
+    });
+    document.getElementById('calNextBtn').addEventListener('click', function () {
+      calViewMonth++; if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; } renderCalHeader(); renderCalGrid();
+    });
+    document.getElementById('calTodayBtn').addEventListener('click', function () {
+      var t = new Date(); calViewYear = t.getFullYear(); calViewMonth = t.getMonth(); calSelectedDate = todayISO();
+      renderCalHeader(); renderCalGrid(); renderCalDayPanel();
+    });
+  }
+  function renderCalGrid() {
+    var grid = document.getElementById('calGrid');
+    var html = '';
+    WEEKDAY_LABELS.forEach(function (w) { html += '<div class="cal-weekday">' + w + '</div>'; });
+    var firstWeekday = new Date(calViewYear, calViewMonth, 1).getDay();
+    var daysInThisMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+    var prevMonth = calViewMonth === 0 ? 11 : calViewMonth - 1;
+    var prevYear = calViewMonth === 0 ? calViewYear - 1 : calViewYear;
+    var daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+    var nextMonth = calViewMonth === 11 ? 0 : calViewMonth + 1;
+    var nextYear = calViewMonth === 11 ? calViewYear + 1 : calViewYear;
+    var totalCells = Math.ceil((firstWeekday + daysInThisMonth) / 7) * 7;
+    var conflictSet = allConflictIds(); var today = todayISO();
+    for (var i = 0; i < totalCells; i++) {
+      var dayNum, dateStr, outside = false, cellYear = calViewYear, cellMonth = calViewMonth;
+      if (i < firstWeekday) { dayNum = daysInPrevMonth - firstWeekday + i + 1; cellYear = prevYear; cellMonth = prevMonth; outside = true; }
+      else if (i >= firstWeekday + daysInThisMonth) { dayNum = i - firstWeekday - daysInThisMonth + 1; cellYear = nextYear; cellMonth = nextMonth; outside = true; }
+      else { dayNum = i - firstWeekday + 1; }
+      dateStr = isoDate(cellYear, cellMonth, dayNum);
+      var dayEntries = calendarItems.filter(function (e) { return e.event_date === dateStr; });
+      var classes = 'cal-day' + (outside ? ' outside' : '') + (dateStr === today ? ' today' : '') + (dateStr === calSelectedDate ? ' selected' : '');
+      html += '<div class="' + classes + '" data-date="' + dateStr + '"><div class="cal-day-num">' + dayNum + '</div>';
+      dayEntries.slice(0, 2).forEach(function (e) {
+        html += '<div class="cal-chip' + (conflictSet[e.id] ? ' conflict' : '') + '">' + escapeHtml(e.who) + ': ' + escapeHtml(e.what) + '</div>';
+      });
+      if (dayEntries.length > 2) html += '<div class="cal-chip-more">+' + (dayEntries.length - 2) + ' more</div>';
+      html += '</div>';
+    }
+    grid.innerHTML = html;
+    document.querySelectorAll('.cal-day').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var d = el.getAttribute('data-date');
+        calSelectedDate = d;
+        var p = d.split('-').map(Number); calViewYear = p[0]; calViewMonth = p[1] - 1;
+        renderCalHeader(); renderCalGrid(); renderCalDayPanel();
+      });
+    });
+  }
+  function renderCalDayPanel() {
+    var panel = document.getElementById('calDayPanel');
+    var dateStr = calSelectedDate;
+    var dayEntries = calendarItems.filter(function (e) { return e.event_date === dateStr; })
+      .sort(function (a, b) { if (!a.start_time) return -1; if (!b.start_time) return 1; return a.start_time < b.start_time ? -1 : 1; });
+    var conflictSet = conflictIdsForDate(dateStr);
+    var html = '<div class="cal-day-panel-inner"><h3>' + formatDateLong(dateStr) + '</h3>';
+    if (dayEntries.length === 0) html += '<div class="empty-state" style="padding:16px 0;">Nothing scheduled yet.</div>';
+    else dayEntries.forEach(function (e) {
+      var isConflict = conflictSet[e.id], pendingConfirm = pendingCalDeleteId === e.id;
+      html += '<div class="cal-entry' + (isConflict ? ' conflict' : '') + '"><div class="cal-entry-main">';
+      html += '<div class="cal-entry-time">' + formatTimeRange(e) + ' · ' + escapeHtml(e.who) + '</div>';
+      html += '<div class="cal-entry-what">' + escapeHtml(e.what) + '</div>';
+      if (e.note) html += '<div class="cal-entry-note">' + escapeHtml(e.note) + '</div>';
+      if (isConflict) html += '<div class="cal-conflict-badge">⚠ Time conflict</div>';
+      html += '</div><button class="del-btn cal-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + e.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+    });
+    html += '<div class="cal-add-row"><select id="calNewWho">' + WHO_NAMES.map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>' +
+      '<input type="time" id="calNewStart"><input type="time" id="calNewEnd">' +
+      '<input type="text" id="calNewWhat" placeholder="What"><input type="text" id="calNewNote" placeholder="Note (optional)">' +
+      '<button class="add-btn" id="calAddBtn">Add</button></div></div>';
+    panel.innerHTML = html;
+    document.querySelectorAll('.cal-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingCalDeleteId === id) {
+          clearTimeout(pendingCalDeleteTimer); pendingCalDeleteId = null;
+          await sbDelete('calendar_events', id);
+          calendarItems = calendarItems.filter(function (i) { return i.id !== id; });
+          renderCalendar();
+        } else {
+          pendingCalDeleteId = id; renderCalDayPanel();
+          clearTimeout(pendingCalDeleteTimer);
+          pendingCalDeleteTimer = setTimeout(function () { pendingCalDeleteId = null; renderCalDayPanel(); }, 6000);
+        }
+      });
+    });
+    document.getElementById('calAddBtn').addEventListener('click', async function () {
+      var whatInput = document.getElementById('calNewWhat');
+      var what = whatInput.value.trim();
+      if (!what) { whatInput.focus(); return; }
+      var row = {
+        event_date: dateStr, who: document.getElementById('calNewWho').value,
+        start_time: document.getElementById('calNewStart').value || null,
+        end_time: document.getElementById('calNewEnd').value || null,
+        what: what, note: document.getElementById('calNewNote').value.trim(), created_by: currentPerson()
+      };
+      var saved = await sbInsert('calendar_events', row);
+      if (saved) { calendarItems.push(saved); renderCalendar(); }
+    });
+  }
+
+  // ============================================================
+  // WHO'S DOING WHAT
+  // ============================================================
+  function renderWhoDoing() {
+    var covered = {};
+    responsibilityItems.forEach(function (r) { covered[r.owner] = true; });
+    document.getElementById('whoTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total responsibilities</div><div class="value">' + responsibilityItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">People covered</div><div class="value">' + Object.keys(covered).length + ' of ' + WHO_NAMES.length + '</div></div>';
+    var list = document.getElementById('whoList');
+    var html = '';
+    if (responsibilityItems.length === 0) html = '<div class="empty-state">Nothing assigned yet. Add the first responsibility below.</div>';
+    else responsibilityItems.forEach(function (r) {
+      var pendingConfirm = pendingWhoDeleteId === r.id;
+      html += '<div class="item-row" style="grid-template-columns: 1fr 140px 28px;" data-id="' + r.id + '">';
+      html += '<div class="item-name">' + escapeHtml(r.area) + (r.note ? '<span class="note">' + escapeHtml(r.note) + '</span>' : '') + '</div>';
+      html += '<div class="status-pill who-owner-pill" data-id="' + r.id + '">' + escapeHtml(r.owner) + '</div>';
+      html += '<button class="del-btn who-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + r.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+    });
+    html += '<div class="add-row" style="grid-template-columns: 1.4fr 1fr 96px;">' +
+      '<input type="text" class="new-who-area" placeholder="Responsibility / area">' +
+      '<input type="text" class="new-who-note" placeholder="Note (optional)">' +
+      '<button class="add-btn" id="whoAddBtn">Add</button></div>';
+    list.innerHTML = html;
+    attachWhoHandlers();
+  }
+  function attachWhoHandlers() {
+    document.querySelectorAll('.who-owner-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var r = responsibilityItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!r) return;
+        r.owner = WHO_NAMES[(WHO_NAMES.indexOf(r.owner) + 1) % WHO_NAMES.length];
+        renderWhoDoing();
+        await sbUpdate('responsibilities', r.id, { owner: r.owner });
+      });
+    });
+    document.querySelectorAll('.who-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingWhoDeleteId === id) {
+          clearTimeout(pendingWhoDeleteTimer); pendingWhoDeleteId = null;
+          await sbDelete('responsibilities', id);
+          responsibilityItems = responsibilityItems.filter(function (i) { return i.id !== id; });
+          renderWhoDoing();
+        } else {
+          pendingWhoDeleteId = id; renderWhoDoing();
+          clearTimeout(pendingWhoDeleteTimer);
+          pendingWhoDeleteTimer = setTimeout(function () { pendingWhoDeleteId = null; renderWhoDoing(); }, 6000);
+        }
+      });
+    });
+    var addBtn = document.getElementById('whoAddBtn');
+    if (addBtn) addBtn.addEventListener('click', async function () {
+      var container = addBtn.closest('.add-row');
+      var areaInput = container.querySelector('.new-who-area');
+      var area = areaInput.value.trim();
+      if (!area) { areaInput.focus(); return; }
+      var row = { area: area, note: container.querySelector('.new-who-note').value.trim(), owner: WHO_NAMES[0], created_by: currentPerson() };
+      var saved = await sbInsert('responsibilities', row);
+      if (saved) { responsibilityItems.push(saved); renderWhoDoing(); }
+    });
+  }
+
+  // ============================================================
+  // TO-DOS
+  // ============================================================
+  function isOverdue(t) { return t.due_date && t.status === 'not-done' && t.due_date < todayISO(); }
+  function formatDueShort(dateStr) { var p = dateStr.split('-').map(Number); return MONTH_LABELS[p[1] - 1].slice(0, 3) + ' ' + p[2]; }
+  function renderTodos() {
+    var done = 0, notDone = 0, overdue = 0;
+    todoItems.forEach(function (t) { if (t.status === 'done') done++; else notDone++; if (isOverdue(t)) overdue++; });
+    document.getElementById('todosTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Total to-dos</div><div class="value">' + todoItems.length + '</div></div>' +
+      '<div class="cell"><div class="label">Not done</div><div class="value">' + notDone + '</div></div>' +
+      '<div class="cell"><div class="label">Done</div><div class="value">' + done + '</div></div>' +
+      '<div class="cell"><div class="label">Overdue</div><div class="value">' + overdue + '</div></div>';
+    var list = document.getElementById('todosCategoryList');
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var secItems = todoItems.filter(function (t) { return t.company_id === co.id; });
+      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      secItems.forEach(function (t) {
+        var pendingConfirm = pendingTodoDeleteId === t.id, overdue = isOverdue(t);
+        html += '<div class="item-row" style="grid-template-columns: 1fr 120px 28px;" data-id="' + t.id + '">';
+        html += '<div class="item-name">' + escapeHtml(t.task);
+        if (t.due_date) html += '<span class="note" style="' + (overdue ? 'color:var(--deep-aqua);font-weight:700;' : '') + '">Due ' + formatDueShort(t.due_date) + (overdue ? ' · OVERDUE' : '') + '</span>';
+        html += '</div><div class="status-pill todo-status-pill status-todo-' + t.status + '" data-id="' + t.id + '">' + TODO_STATUS_LABEL[t.status] + '</div>';
+        html += '<button class="del-btn todo-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + t.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+      });
+      html += '<div class="add-row" style="grid-template-columns: 1.6fr 1fr 96px;">' +
+        '<input type="text" class="new-todo-task" placeholder="Task" data-co="' + co.id + '">' +
+        '<input type="date" class="new-todo-due" data-co="' + co.id + '">' +
+        '<button class="add-btn todo-add-btn" data-co="' + co.id + '">Add</button></div></div>';
+    });
+    list.innerHTML = (todoItems.length === 0 ? '<div class="empty-state">No to-dos yet. Add the first one below.</div>' : '') + html;
+    attachTodoHandlers();
+  }
+  function attachTodoHandlers() {
+    document.querySelectorAll('.todo-status-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var t = todoItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
+        if (!t) return;
+        t.status = TODO_STATUSES[(TODO_STATUSES.indexOf(t.status) + 1) % TODO_STATUSES.length];
+        renderTodos();
+        await sbUpdate('todos', t.id, { status: t.status });
+      });
+    });
+    document.querySelectorAll('.todo-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingTodoDeleteId === id) {
+          clearTimeout(pendingTodoDeleteTimer); pendingTodoDeleteId = null;
+          await sbDelete('todos', id);
+          todoItems = todoItems.filter(function (i) { return i.id !== id; });
+          renderTodos();
+        } else {
+          pendingTodoDeleteId = id; renderTodos();
+          clearTimeout(pendingTodoDeleteTimer);
+          pendingTodoDeleteTimer = setTimeout(function () { pendingTodoDeleteId = null; renderTodos(); }, 6000);
+        }
+      });
+    });
+    document.querySelectorAll('.todo-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var coId = el.getAttribute('data-co');
+        var container = el.closest('.add-row');
+        var taskInput = container.querySelector('.new-todo-task');
+        var task = taskInput.value.trim();
+        if (!task) { taskInput.focus(); return; }
+        var due = container.querySelector('.new-todo-due').value;
+        var row = { task: task, company_id: coId, due_date: due || null, status: 'not-done', created_by: currentPerson() };
+        var saved = await sbInsert('todos', row);
+        if (saved) { todoItems.push(saved); renderTodos(); }
+      });
+    });
+  }
+
+  // ============================================================
+  // MONEY (+ grants preview)
+  // ============================================================
+  function grantsForItem(itemId) { return moneyGrants.filter(function (g) { return g.money_item_id === itemId; }); }
+  function isVisibleToCurrentPerson(item) {
+    var myCompany = companyByName(currentPersonCompanyName());
+    if (myCompany && item.company_id === myCompany.id) return true;
+    return grantsForItem(item.id).some(function (g) {
+      if (g.grant_type === 'public') return true;
+      if (g.grant_type === 'person') return g.grantee_person === currentPerson();
+      if (g.grant_type === 'company') return myCompany && g.grantee_company_id === myCompany.id;
+      return false;
+    });
+  }
+  function renderMoney() {
+    var visible = moneyItems.filter(isVisibleToCurrentPerson);
+    var total = 0, actual = 0, received = 0;
+    visible.forEach(function (i) { total += Number(i.est_cost) || 0; actual += Number(i.actual_cost) || 0; if (i.status === 'received') received++; });
+    document.getElementById('moneyTotalsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Estimated total</div><div class="value">₱' + total.toLocaleString() + '</div></div>' +
+      '<div class="cell"><div class="label">Actual spent</div><div class="value">₱' + actual.toLocaleString() + '</div></div>' +
+      '<div class="cell"><div class="label">Items</div><div class="value">' + visible.length + '</div></div>' +
+      '<div class="cell"><div class="label">Received</div><div class="value">' + received + '</div></div>';
+
+    var list = document.getElementById('moneyCategoryList');
+    var myCompany = companyByName(currentPersonCompanyName());
+    var html = '';
+    GEAR_CATEGORIES.forEach(function (cat) {
+      var catItems = visible.filter(function (i) { return i.category === cat; });
+      html += '<div class="cat-block"><div class="cat-head"><h2>' + cat + '</h2><span class="subtotal">₱' +
+        catItems.reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0).toLocaleString() + '</span></div>';
+      catItems.forEach(function (item) {
+        var pendingConfirm = pendingMoneyDeleteId === item.id;
+        var isMine = myCompany && item.company_id === myCompany.id;
+        var lockLabel = isMine ? 'Private to ' + (companyById(item.company_id) || {}).name : 'Shared with you by ' + (companyById(item.company_id) || {}).name;
+        html += '<div class="item-row" data-id="' + item.id + '">';
+        html += '<div class="item-name">' + escapeHtml(item.name) + (item.note ? '<span class="note">' + escapeHtml(item.note) + '</span>' : '') +
+          '<span class="money-lock">🔒 ' + escapeHtml(lockLabel) + (isMine ? '<button class="share-btn" data-id="' + item.id + '">Share</button>' : '') + '</span></div>';
+        html += '<input class="item-cost money-est-input" type="number" value="' + (item.est_cost == null ? '' : item.est_cost) + '" data-id="' + item.id + '" ' + (isMine ? '' : 'disabled') + '>';
+        html += '<input class="item-cost money-actual-input" type="number" value="' + (item.actual_cost == null ? '' : item.actual_cost) + '" placeholder="actual" data-id="' + item.id + '" ' + (isMine ? '' : 'disabled') + '>';
+        html += '<div class="status-pill money-status-pill status-' + item.status + '" data-id="' + item.id + '">' + MONEY_STATUS_LABEL[item.status] + '</div>';
+        html += isMine ? '<button class="del-btn money-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + item.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button>' : '<span></span>';
+        html += '</div>';
+        if (openShareItemId === item.id) html += renderSharePanel(item);
+      });
+      if (myCompany) {
+        html += '<div class="add-row"><input type="text" class="new-money-name" placeholder="Item name" data-cat="' + cat + '">' +
+          '<input type="text" class="new-money-note" placeholder="Note (optional)" data-cat="' + cat + '">' +
+          '<input type="number" class="new-money-cost" placeholder="Est. cost" data-cat="' + cat + '">' +
+          '<button class="add-btn money-add-btn" data-cat="' + cat + '">Add</button></div>';
+      }
+      html += '</div>';
+    });
+    list.innerHTML = html;
+    attachMoneyHandlers();
+  }
+  function renderSharePanel(item) {
+    var grants = grantsForItem(item.id);
+    var html = '<div class="share-panel"><strong>Share "' + escapeHtml(item.name) + '"</strong><br><br>';
+    grants.forEach(function (g) {
+      var label = g.grant_type === 'public' ? 'Everyone' : g.grant_type === 'person' ? g.grantee_person : (companyById(g.grantee_company_id) || {}).name;
+      html += '<span class="grant-tag">' + escapeHtml(label) + ' <button class="revoke-grant-btn" data-grant-id="' + g.id + '">×</button></span>';
+    });
+    html += '<div style="margin-top:8px;">' +
+      '<select id="grantTypeSelect-' + item.id + '"><option value="person">A specific person</option><option value="company">A whole company</option><option value="public">Everyone</option></select> ' +
+      '<span id="grantTargetWrap-' + item.id + '"></span> ' +
+      '<button class="add-btn grant-add-btn" data-id="' + item.id + '">Grant</button></div></div>';
+    return html;
+  }
+  function refreshGrantTarget(itemId) {
+    var typeSel = document.getElementById('grantTypeSelect-' + itemId);
+    var wrap = document.getElementById('grantTargetWrap-' + itemId);
+    if (!typeSel || !wrap) return;
+    if (typeSel.value === 'person') {
+      wrap.innerHTML = '<select id="grantTargetSelect-' + itemId + '">' + WHO_NAMES.map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>';
+    } else if (typeSel.value === 'company') {
+      wrap.innerHTML = '<select id="grantTargetSelect-' + itemId + '">' + COMPANIES.map(function (c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('') + '</select>';
+    } else {
+      wrap.innerHTML = '';
+    }
+  }
+  function attachMoneyHandlers() {
+    document.querySelectorAll('.money-status-pill').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var i = moneyItems.find(function (x) { return x.id === el.getAttribute('data-id'); });
+        if (!i) return;
+        i.status = MONEY_STATUSES[(MONEY_STATUSES.indexOf(i.status) + 1) % MONEY_STATUSES.length];
+        renderMoney();
+        await sbUpdate('money_items', i.id, { status: i.status });
+      });
+    });
+    document.querySelectorAll('.money-est-input').forEach(function (el) {
+      el.addEventListener('change', async function () {
+        var i = moneyItems.find(function (x) { return x.id === el.getAttribute('data-id'); });
+        if (!i) return;
+        i.est_cost = el.value === '' ? null : Number(el.value);
+        await sbUpdate('money_items', i.id, { est_cost: i.est_cost });
+        renderMoney();
+      });
+    });
+    document.querySelectorAll('.money-actual-input').forEach(function (el) {
+      el.addEventListener('change', async function () {
+        var i = moneyItems.find(function (x) { return x.id === el.getAttribute('data-id'); });
+        if (!i) return;
+        i.actual_cost = el.value === '' ? null : Number(el.value);
+        await sbUpdate('money_items', i.id, { actual_cost: i.actual_cost });
+        renderMoney();
+      });
+    });
+    document.querySelectorAll('.money-del-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        if (pendingMoneyDeleteId === id) {
+          clearTimeout(pendingMoneyDeleteTimer); pendingMoneyDeleteId = null;
+          await sbDelete('money_items', id);
+          moneyItems = moneyItems.filter(function (i) { return i.id !== id; });
+          renderMoney();
+        } else {
+          pendingMoneyDeleteId = id; renderMoney();
+          clearTimeout(pendingMoneyDeleteTimer);
+          pendingMoneyDeleteTimer = setTimeout(function () { pendingMoneyDeleteId = null; renderMoney(); }, 6000);
+        }
+      });
+    });
+    document.querySelectorAll('.money-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var cat = el.getAttribute('data-cat');
+        var container = el.closest('.add-row');
+        var nameInput = container.querySelector('.new-money-name');
+        var name = nameInput.value.trim();
+        if (!name) { nameInput.focus(); return; }
+        var myCompany = companyByName(currentPersonCompanyName());
+        var costVal = container.querySelector('.new-money-cost').value;
+        var row = {
+          name: name, category: cat, company_id: myCompany.id,
+          note: container.querySelector('.new-money-note').value.trim(),
+          est_cost: costVal === '' ? null : Number(costVal),
+          status: 'wishlist', created_by: currentPerson()
+        };
+        var saved = await sbInsert('money_items', row);
+        if (saved) { moneyItems.push(saved); renderMoney(); }
+      });
+    });
+    document.querySelectorAll('.share-btn').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var id = el.getAttribute('data-id');
+        openShareItemId = (openShareItemId === id) ? null : id;
+        renderMoney();
+        if (openShareItemId) refreshGrantTarget(openShareItemId);
+      });
+    });
+    document.querySelectorAll('[id^="grantTypeSelect-"]').forEach(function (el) {
+      el.addEventListener('change', function () { refreshGrantTarget(el.id.replace('grantTypeSelect-', '')); });
+      refreshGrantTarget(el.id.replace('grantTypeSelect-', ''));
+    });
+    document.querySelectorAll('.revoke-grant-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var grantId = el.getAttribute('data-grant-id');
+        await sbDelete('money_grants', grantId);
+        moneyGrants = moneyGrants.filter(function (g) { return g.id !== grantId; });
+        renderMoney();
+      });
+    });
+    document.querySelectorAll('.grant-add-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var itemId = el.getAttribute('data-id');
+        var typeSel = document.getElementById('grantTypeSelect-' + itemId);
+        var type = typeSel.value;
+        var row = { money_item_id: itemId, grant_type: type, granted_by: currentPerson() };
+        if (type === 'person') row.grantee_person = document.getElementById('grantTargetSelect-' + itemId).value;
+        if (type === 'company') row.grantee_company_id = document.getElementById('grantTargetSelect-' + itemId).value;
+        var saved = await sbInsert('money_grants', row);
+        if (saved) { moneyGrants.push(saved); renderMoney(); }
+      });
+    });
+  }
+
+  // ============================================================
+  // ASSISTANT
+  // ============================================================
+  function buildDataSnapshot() {
+    return JSON.stringify({
+      today: todayISO(), todayWeekday: WEEKDAY_LABELS[new Date().getDay()],
+      companies: COMPANIES.map(function (c) { return c.name; }),
+      people: WHO_NAMES,
+      currentUser: currentPerson(),
+      gearCategories: GEAR_CATEGORIES, contactTags: CONTACT_TAGS,
+      projectStatuses: PROJECT_STATUSES, todoStatuses: TODO_STATUSES, gearStatuses: GEAR_STATUSES,
+      existingGear: gearItems.map(function (g) { return { id: g.id, name: g.name, category: g.category, holder: g.holder, status: g.status }; }),
+      existingContacts: contactItems.map(function (c) { return { id: c.id, name: c.name, company: (companyById(c.company_id) || {}).name, tag: c.tag }; }),
+      existingProjects: projectItems.map(function (p) { return { id: p.id, name: p.name, company: (companyById(p.company_id) || {}).name, status: p.status }; }),
+      existingTodos: todoItems.map(function (t) { return { id: t.id, task: t.task, company: (companyById(t.company_id) || {}).name, status: t.status, dueDate: t.due_date }; }),
+      existingResponsibilities: responsibilityItems.map(function (r) { return { id: r.id, area: r.area, owner: r.owner }; }),
+      visibleMoneyItems: moneyItems.filter(isVisibleToCurrentPerson).map(function (i) { return { id: i.id, name: i.name, category: i.category, company: (companyById(i.company_id) || {}).name, status: i.status, estCost: i.est_cost }; })
+    });
+  }
+  function buildAssistantRules() {
+    return (
+      'You are a filing assistant inside "Virtual HQ", a shared internal tool for three small companies working out of one studio: MAAD Solutions, Pulse Narrative, and Alexander & Co. ' +
+      'The user talking to you right now is: ' + currentPerson() + '. When they say "I" or "me", that means ' + currentPerson() + '.\n\n' +
+      'You handle two kinds of messages. If the user is asking a QUESTION about existing data ("what\'s overdue for MAAD", "who has the camera", "is Thursday double-booked"), answer it directly and helpfully using CURRENT DATA below, and return an empty actions list. If the user is telling you something to FILE (a meeting, a task, gear status, a new contact), propose structured actions as described below. A single message can contain both a question and something to file - handle both. A single message can also describe several unrelated things to file - handle each independently.\n\n' +
+      'CATEGORIES AND FIELDS:\n' +
+      '- gear: fields name, category (one of gearCategories), holder (who has it now, or empty), status (one of gearStatuses), note (optional).\n' +
+      '- contacts: fields name, company (one of companies), org (optional), info (email or phone, optional), tag (one of contactTags).\n' +
+      '- projects: fields name, company (one of companies), owner (a name, free text), note (optional), status (one of projectStatuses).\n' +
+      '- calendar: fields date (YYYY-MM-DD), who (must be one of people), what (title), startTime (HH:MM 24-hour, optional), endTime (HH:MM 24-hour, optional), note (optional).\n' +
+      '- who: fields area (the responsibility), owner (must be one of people), note (optional).\n' +
+      '- todos: fields task, company (one of companies), dueDate (YYYY-MM-DD, optional), status (one of todoStatuses).\n\n' +
+      'MATCHING RULE: compare what the user says against the "existing*" lists in CURRENT DATA. If there is exactly one plausible match for something they refer to, propose an "update" using that item\'s id instead of a duplicate. If more than one item is plausibly what they mean, ask a clarifying question and propose no action for that item yet. If nothing plausibly matches, propose "create". Apply the same assume-if-one / ask-if-several logic to any other ambiguous detail: which company, which person, which date.\n\n' +
+      'Reply with ONLY a JSON object, nothing else, no markdown fences, shaped exactly like this:\n' +
+      '{"reply": "a short natural conversational line - answer a question, confirm what you understood, or ask a clarifying question here", "actions": [{"module": "gear", "operation": "create", "matchId": null, "summary": "one plain-English line describing this action, for a confirmation list", "fields": {}}]}\n' +
+      'If you are only answering a question or asking a clarifying question, return "actions": [].\n\n' +
+      'CURRENT DATA:\n' + buildDataSnapshot()
+    );
+  }
+  function renderChatLog() {
+    var log = document.getElementById('asstLog');
+    var html = '';
+    chatTurns.forEach(function (t) { html += '<div class="asst-bubble ' + (t.role === 'user' ? 'user' : 'assistant') + '">' + escapeHtml(t.content) + '</div>'; });
+    if (asstBusy) html += '<div class="asst-bubble thinking">Thinking...</div>';
+    log.innerHTML = html;
+    log.scrollTop = log.scrollHeight;
+    document.getElementById('asstIntro').style.display = chatTurns.length === 0 ? '' : 'none';
+  }
+  function renderPendingActions() {
+    var box = document.getElementById('asstPending');
+    if (!pendingActions || pendingActions.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    var html = '<h3>Ready to file</h3><ul>';
+    pendingActions.forEach(function (a) { html += '<li>' + escapeHtml(a.summary || (a.operation + ' ' + a.module)) + '</li>'; });
+    html += '</ul><div class="asst-pending-actions"><button class="asst-confirm-btn" id="asstConfirmBtn">Add these</button><button class="asst-cancel-btn" id="asstCancelBtn">Cancel</button></div>';
+    box.innerHTML = html; box.style.display = '';
+    document.getElementById('asstConfirmBtn').addEventListener('click', applyPendingActions);
+    document.getElementById('asstCancelBtn').addEventListener('click', function () { pendingActions = null; renderPendingActions(); });
+  }
+  function oneOf(val, list, fallback) { return list.indexOf(val) !== -1 ? val : fallback; }
+  async function applyPendingActions() {
+    if (!pendingActions) return;
+    setStatus('asstStatusBar', 'saving...');
+    for (var idx = 0; idx < pendingActions.length; idx++) {
+      var a = pendingActions[idx]; var f = a.fields || {};
+      try {
+        if (a.module === 'gear') {
+          if (a.operation === 'update' && a.matchId) {
+            var g = gearItems.find(function (i) { return i.id === a.matchId; });
+            if (g) {
+              var patch = {};
+              if (f.holder !== undefined) patch.holder = f.holder;
+              if (f.status !== undefined) patch.status = oneOf(f.status, GEAR_STATUSES, g.status);
+              if (f.note !== undefined) patch.note = f.note;
+              Object.assign(g, patch); await sbUpdate('gear_items', g.id, patch);
+            }
+          } else if (f.name) {
+            var row = { name: f.name, category: oneOf(f.category, GEAR_CATEGORIES, GEAR_CATEGORIES[0]), holder: f.holder || '', status: oneOf(f.status, GEAR_STATUSES, 'available'), note: f.note || '', created_by: currentPerson() };
+            var saved = await sbInsert('gear_items', row); if (saved) gearItems.push(saved);
+          }
+        } else if (a.module === 'contacts') {
+          var co = companyByName(f.company);
+          if (a.operation === 'update' && a.matchId) {
+            var c = contactItems.find(function (i) { return i.id === a.matchId; });
+            if (c) {
+              var cp = {}; if (f.org !== undefined) cp.org = f.org; if (f.info !== undefined) cp.info = f.info; if (f.tag !== undefined) cp.tag = oneOf(f.tag, CONTACT_TAGS, c.tag);
+              Object.assign(c, cp); await sbUpdate('contacts', c.id, cp);
+            }
+          } else if (f.name && co) {
+            var crow = { name: f.name, company_id: co.id, org: f.org || '', info: f.info || '', tag: oneOf(f.tag, CONTACT_TAGS, 'contact'), created_by: currentPerson() };
+            var csaved = await sbInsert('contacts', crow); if (csaved) contactItems.push(csaved);
+          }
+        } else if (a.module === 'projects') {
+          var pco = companyByName(f.company);
+          if (a.operation === 'update' && a.matchId) {
+            var p = projectItems.find(function (i) { return i.id === a.matchId; });
+            if (p) {
+              var pp = {}; if (f.owner !== undefined) pp.owner = f.owner; if (f.note !== undefined) pp.note = f.note; if (f.status !== undefined) pp.status = oneOf(f.status, PROJECT_STATUSES, p.status);
+              Object.assign(p, pp); await sbUpdate('projects', p.id, pp);
+            }
+          } else if (f.name && pco) {
+            var prow = { name: f.name, company_id: pco.id, owner: f.owner || '', note: f.note || '', status: oneOf(f.status, PROJECT_STATUSES, 'not-started'), created_by: currentPerson() };
+            var psaved = await sbInsert('projects', prow); if (psaved) projectItems.push(psaved);
+          }
+        } else if (a.module === 'calendar') {
+          if (f.date && /^\d{4}-\d{2}-\d{2}$/.test(f.date)) {
+            var erow = { event_date: f.date, who: oneOf(f.who, WHO_NAMES, WHO_NAMES[0]), what: f.what || 'Untitled', start_time: f.startTime || null, end_time: f.endTime || null, note: f.note || '', created_by: currentPerson() };
+            var esaved = await sbInsert('calendar_events', erow); if (esaved) calendarItems.push(esaved);
+          }
+        } else if (a.module === 'who') {
+          if (a.operation === 'update' && a.matchId) {
+            var r = responsibilityItems.find(function (i) { return i.id === a.matchId; });
+            if (r) {
+              var rp = {}; if (f.owner !== undefined) rp.owner = oneOf(f.owner, WHO_NAMES, r.owner); if (f.note !== undefined) rp.note = f.note;
+              Object.assign(r, rp); await sbUpdate('responsibilities', r.id, rp);
+            }
+          } else if (f.area) {
+            var rrow = { area: f.area, note: f.note || '', owner: oneOf(f.owner, WHO_NAMES, WHO_NAMES[0]), created_by: currentPerson() };
+            var rsaved = await sbInsert('responsibilities', rrow); if (rsaved) responsibilityItems.push(rsaved);
+          }
+        } else if (a.module === 'todos') {
+          var tco = companyByName(f.company);
+          if (a.operation === 'update' && a.matchId) {
+            var t = todoItems.find(function (i) { return i.id === a.matchId; });
+            if (t) {
+              var tp = {}; if (f.status !== undefined) tp.status = oneOf(f.status, TODO_STATUSES, t.status); if (f.dueDate !== undefined) tp.due_date = f.dueDate || null;
+              Object.assign(t, tp); await sbUpdate('todos', t.id, tp);
+            }
+          } else if (f.task && tco) {
+            var trow = { task: f.task, company_id: tco.id, due_date: (f.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(f.dueDate)) ? f.dueDate : null, status: oneOf(f.status, TODO_STATUSES, 'not-done'), created_by: currentPerson() };
+            var tsaved = await sbInsert('todos', trow); if (tsaved) todoItems.push(tsaved);
+          }
+        }
+      } catch (e) { console.error('action failed', a, e); }
+    }
+    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderWhoDoing(); renderTodos(); renderMoney();
+    pendingActions = null; renderPendingActions();
+    setStatus('asstStatusBar', 'saved');
+  }
+  async function callAI(turns) {
+    var body = { model: AI_MODEL, max_tokens: 1024, system: buildAssistantRules(), messages: turns };
+    var res = await fetch(AI_PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'AI request failed');
+    var textBlock = (data.content || []).find(function (b) { return b.type === 'text'; });
+    if (!textBlock) throw new Error('No response text');
+    var raw = textBlock.text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    return JSON.parse(raw);
+  }
+  async function sendChatMessage() {
+    var input = document.getElementById('asstInput');
+    var text = input.value.trim();
+    if (!text || asstBusy) return;
+    input.value = ''; input.disabled = true; document.getElementById('asstSendBtn').disabled = true;
+    chatTurns.push({ role: 'user', content: text });
+    asstBusy = true; renderChatLog();
+    try {
+      var result = await callAI(chatTurns);
+      asstBusy = false;
+      var reply = (result && typeof result.reply === 'string') ? result.reply : 'Got it.';
+      chatTurns.push({ role: 'assistant', content: reply });
+      pendingActions = (result && Array.isArray(result.actions)) ? result.actions.filter(function (a) { return a && a.module && a.fields; }) : [];
+      renderChatLog(); renderPendingActions();
+    } catch (e) {
+      asstBusy = false;
+      chatTurns.push({ role: 'assistant', content: 'Couldn\'t process that — ' + (e.message || 'try again.') });
+      renderChatLog();
+    } finally {
+      document.getElementById('asstInput').disabled = false;
+      document.getElementById('asstSendBtn').disabled = false;
+      document.getElementById('asstInput').focus();
+    }
+  }
+  function initVoice() {
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var micBtn = document.getElementById('asstMicBtn');
+    if (!SpeechRecognition) return;
+    micBtn.style.display = '';
+    recognizer = new SpeechRecognition();
+    recognizer.continuous = false;
+    recognizer.interimResults = false;
+    recognizer.lang = 'en-US';
+    recognizer.onresult = function (e) {
+      var transcript = e.results[0][0].transcript;
+      var input = document.getElementById('asstInput');
+      input.value = (input.value ? input.value + ' ' : '') + transcript;
+      input.focus();
+    };
+    recognizer.onend = function () { listening = false; micBtn.classList.remove('listening'); };
+    recognizer.onerror = function () { listening = false; micBtn.classList.remove('listening'); };
+    micBtn.addEventListener('click', function () {
+      if (listening) { recognizer.stop(); return; }
+      listening = true; micBtn.classList.add('listening'); recognizer.start();
+    });
+  }
+  function initAssistant() {
+    document.getElementById('asstSendBtn').addEventListener('click', sendChatMessage);
+    document.getElementById('asstInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendChatMessage(); });
+    initVoice();
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  async function loadCompanies() {
+    var res = await sb.from('companies').select('*').order('name');
+    COMPANIES = res.data || [];
+  }
+  async function init() {
+    initWho(); initTabs(); initAssistant();
+    await loadCompanies();
+    gearItems = await sbSelect('gear_items');
+    contactItems = await sbSelect('contacts');
+    projectItems = await sbSelect('projects');
+    calendarItems = await sbSelect('calendar_events');
+    responsibilityItems = await sbSelect('responsibilities');
+    todoItems = await sbSelect('todos');
+    moneyItems = await sbSelect('money_items');
+    moneyGrants = await sbSelect('money_grants');
+    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderWhoDoing(); renderTodos(); renderMoney();
+    renderChatLog();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
