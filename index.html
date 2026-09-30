@@ -1238,7 +1238,7 @@
       '- who: fields area (the responsibility), owner (must be one of people), note (optional).\n' +
       '- todos: fields task, company (one of companies), dueDate (YYYY-MM-DD, optional), status (one of todoStatuses).\n\n' +
       'MATCHING RULE: compare what the user says against the "existing*" lists in CURRENT DATA. If there is exactly one plausible match for something they refer to, propose an "update" using that item\'s id instead of a duplicate. If more than one item is plausibly what they mean, ask a clarifying question and propose no action for that item yet. If nothing plausibly matches, propose "create". Apply the same assume-if-one / ask-if-several logic to any other ambiguous detail: which company, which person, which date.\n\n' +
-      'Reply with ONLY a JSON object, nothing else, no markdown fences, shaped exactly like this:\n' +
+      'Reply with ONLY a JSON object, nothing else. No markdown fences, no conversational lead-in like "Sure, here it is:" or "Perfect, I\'ll log that", no text before or after the object. Any warmth or acknowledgment belongs inside the "reply" field, not outside the JSON. Shaped exactly like this:\n' +
       '{"reply": "a short natural conversational line - answer a question, confirm what you understood, or ask a clarifying question here", "actions": [{"module": "gear", "operation": "create", "matchId": null, "summary": "one plain-English line describing this action, for a confirmation list", "fields": {}}]}\n' +
       'If you are only answering a question or asking a clarifying question, return "actions": [].\n\n' +
       'CURRENT DATA:\n' + buildDataSnapshot()
@@ -1351,6 +1351,14 @@
     var textBlock = (data.content || []).find(function (b) { return b.type === 'text'; });
     if (!textBlock) throw new Error('No response text');
     var raw = textBlock.text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    // The model is instructed to reply with only JSON, but sometimes wraps it in a
+    // conversational lead-in ("Perfect. I'll log..."). Pull out the outermost {...}
+    // block regardless of what surrounds it, rather than trusting raw to already be clean.
+    var firstBrace = raw.indexOf('{');
+    var lastBrace = raw.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      raw = raw.substring(firstBrace, lastBrace + 1);
+    }
     return JSON.parse(raw);
   }
   async function sendChatMessage() {
