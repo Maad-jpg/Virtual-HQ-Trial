@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Virtual HQ — Trial</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --ink: #0B2027;
@@ -99,6 +100,59 @@
 
   section.panel { background: var(--surface); border-radius: 8px; padding: 22px; box-shadow: 0 8px 24px var(--shadow); }
 
+  /* Per-company accent colors - used as highlights on top of the shared house
+     theme, never as a full re-skin. Keep this the single source of truth. */
+  :root {
+    --co-maad: #0089A3;
+    --co-pulse: #FF3B1F;
+    --co-alexander: #D4A017;
+    --co-alexander-dark: #1B3A2B;
+  }
+
+  /* ===== Overview tab: scroll-driven story ===== */
+  .ov-panel { padding: 0; overflow: hidden; }
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  .ov-hero-stack { display: flex; flex-direction: column; }
+  .ov-hero-chapter {
+    position: relative; min-height: 420px; display: flex; flex-direction: column;
+    align-items: flex-start; justify-content: flex-end; padding: 48px 36px;
+    background-size: cover; background-position: center; overflow: hidden;
+  }
+  .ov-hero-chapter::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, var(--chapter-tint) 100%);
+    opacity: 0.88;
+  }
+  .ov-hero-chapter > * { position: relative; z-index: 1; }
+  .ov-hero-kicker {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;
+    color: var(--paper); opacity: 0.85; margin-bottom: 8px;
+  }
+  .ov-hero-chapter h1 { font-size: 34px; color: var(--paper); margin: 0 0 10px; line-height: 1.15; }
+  .ov-hero-chapter p { font-size: 15px; color: var(--paper); opacity: 0.92; max-width: 56ch; margin: 0; }
+
+  .ov-scene { padding: 56px 32px; }
+  .ov-scene-title { font-size: 22px; margin: 0 0 20px; }
+
+  .ov-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+  .ov-chart-card { background: var(--surface-alt); border-radius: 10px; padding: 18px; }
+  .ov-chart-card h3 { font-size: 14px; margin: 0 0 14px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ov-chart-card canvas { max-height: 220px; }
+
+  .ov-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .ov-gallery-photo { aspect-ratio: 4/3; border-radius: 8px; background-size: cover; background-position: center; }
+  .ov-gallery-empty { color: var(--text-soft); font-size: 13.5px; padding: 30px; text-align: center; background: var(--surface-alt); border-radius: 10px; grid-column: 1 / -1; }
+
+  .co-accent-bar { border-left: 4px solid var(--co-color, var(--border)); padding-left: 10px !important; }
+
+  @media (max-width: 640px) {
+    .ov-hero-chapter { min-height: 320px; padding: 32px 20px; }
+    .ov-hero-chapter h1 { font-size: 26px; }
+    .ov-scene { padding: 40px 18px; }
+  }
+
   .totals-strip {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px;
     background: var(--border); border: 1px solid var(--border); border-radius: 8px;
@@ -176,6 +230,52 @@
     width: 40px; font-size: 16px; cursor: pointer; color: var(--text-main);
   }
   .mic-btn.listening { background: var(--deep-aqua); color: var(--paper); border-color: var(--deep-aqua); }
+
+  .asst-bubble-btn {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    width: 60px; height: 60px; border-radius: 50%; border: none;
+    background: var(--deep-aqua); color: var(--paper); font-size: 26px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer;
+  }
+  .asst-bubble-btn:hover { background: #007289; }
+  .asst-widget {
+    position: fixed; bottom: 98px; right: 24px; z-index: 1000;
+    width: 380px; max-width: calc(100vw - 32px); max-height: 70vh;
+    background: var(--surface); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.45); display: flex; flex-direction: column;
+  }
+  .asst-widget-header {
+    background: var(--ink); color: var(--paper); padding: 14px 16px;
+    display: flex; align-items: center; gap: 10px; flex: none;
+  }
+  .asst-widget-avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--deep-aqua);
+    color: var(--paper); display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 700; flex: none;
+  }
+  .asst-widget-heading { flex: 1; display: flex; flex-direction: column; line-height: 1.3; }
+  .asst-widget-heading strong { font-size: 14px; }
+  .asst-widget-heading span { font-size: 11.5px; color: #9FB8BE; }
+  .asst-widget-close {
+    background: none; border: none; color: var(--paper); font-size: 20px;
+    cursor: pointer; line-height: 1; padding: 4px;
+  }
+  .asst-widget-body { padding: 16px; overflow-y: auto; flex: 1; }
+  .asst-widget-footer { padding: 12px 16px 16px; border-top: 1px solid var(--border); flex: none; }
+  .asst-widget .asst-intro { padding: 0 0 14px; }
+  .asst-widget .asst-intro p { font-size: 13px; }
+  .asst-widget .asst-log { max-height: none; }
+  .asst-quick-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .asst-quick-btn {
+    background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-main);
+    border-radius: 14px; font-size: 12px; padding: 6px 11px; cursor: pointer;
+    font-family: Calibri, Carlito, Arial, sans-serif;
+  }
+  .asst-quick-btn:hover { border-color: var(--deep-aqua); color: var(--deep-aqua); }
+  @media (max-width: 480px) {
+    .asst-widget { right: 16px; left: 16px; width: auto; bottom: 90px; }
+    .asst-bubble-btn { right: 16px; }
+  }
 
   .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .cal-header h2 { font-size: 18px; font-weight: 700; margin: 0; }
@@ -275,7 +375,7 @@
   </header>
 
   <nav class="tabs" id="tabNav">
-    <button class="active" data-tab="assistant">Assistant</button>
+    <button class="active" data-tab="overview">Overview</button>
     <button data-tab="money">Money</button>
     <button data-tab="projects">Projects</button>
     <button data-tab="contacts">Contacts</button>
@@ -285,19 +385,38 @@
     <button data-tab="todos">To-dos</button>
   </nav>
 
-  <section class="panel" id="assistantPanel">
-    <div class="asst-intro" id="asstIntro">
-      <h2>Tell it what happened</h2>
-      <p>One line is enough — "meeting with Diane at 10am tomorrow, and I have the ZV-E10, add 'update the deck' to my MAAD to-dos." It sorts that into Calendar, Gear and To-dos, and checks with you before saving anything. You can also ask it questions, like "what's overdue for MAAD?"</p>
+  <section class="panel ov-panel" id="overviewPanel">
+    <div class="ov-hero-stack" id="ovHeroStack"></div>
+
+    <div class="ov-scene reveal" id="ovStatsScene">
+      <h2 class="ov-scene-title">Where things stand today</h2>
+      <div class="totals-strip" id="ovStatsStrip"></div>
     </div>
-    <div class="asst-log" id="asstLog"></div>
-    <div class="asst-pending" id="asstPending" style="display:none;"></div>
-    <div class="asst-input-row">
-      <input type="text" id="asstInput" placeholder="What's going on?" autocomplete="off">
-      <button class="mic-btn" id="asstMicBtn" title="Speak instead of typing" style="display:none;">🎤</button>
-      <button class="add-btn" id="asstSendBtn">Send</button>
+
+    <div class="ov-scene reveal" id="ovChartsScene">
+      <h2 class="ov-scene-title">The numbers</h2>
+      <div class="ov-charts">
+        <div class="ov-chart-card">
+          <h3>Money by category</h3>
+          <canvas id="ovMoneyChart"></canvas>
+        </div>
+        <div class="ov-chart-card">
+          <h3>Projects by company</h3>
+          <canvas id="ovProjectsChart"></canvas>
+        </div>
+        <div class="ov-chart-card">
+          <h3>Gear by status</h3>
+          <canvas id="ovGearChart"></canvas>
+        </div>
+      </div>
     </div>
-    <div class="status-bar" id="asstStatusBar"></div>
+
+    <div class="ov-scene reveal" id="ovGalleryScene">
+      <h2 class="ov-scene-title">From the studio</h2>
+      <div class="ov-gallery" id="ovGallery"></div>
+    </div>
+
+    <div class="status-bar" id="overviewStatusBar"></div>
   </section>
 
   <section class="panel" id="moneyPanel" style="display:none;">
@@ -346,6 +465,39 @@
   </section>
 </div>
 
+<button class="asst-bubble-btn" id="asstBubbleBtn" title="Ask the assistant">💬</button>
+
+<div class="asst-widget" id="asstWidget" style="display:none;">
+  <div class="asst-widget-header">
+    <div class="asst-widget-avatar">VA</div>
+    <div class="asst-widget-heading">
+      <strong>Virtual HQ Assistant</strong>
+      <span>Reads and files across all 7 tabs</span>
+    </div>
+    <button class="asst-widget-close" id="asstWidgetClose">×</button>
+  </div>
+  <div class="asst-widget-body">
+    <div class="asst-intro" id="asstIntro">
+      <p>One line is enough — "meeting with Diane at 10am tomorrow, and I have the ZV-E10, add 'update the deck' to my MAAD to-dos." It sorts that into Calendar, Gear and To-dos, and checks with you before saving anything. You can also ask it questions, like "what's overdue for MAAD?"</p>
+      <div class="asst-quick-row">
+        <button class="asst-quick-btn" data-prompt="What's overdue for my company?">What's overdue?</button>
+        <button class="asst-quick-btn" data-prompt="What's on the calendar this week?">This week's calendar</button>
+        <button class="asst-quick-btn" data-prompt="Who has the camera right now?">Who has the camera?</button>
+      </div>
+    </div>
+    <div class="asst-log" id="asstLog"></div>
+    <div class="asst-pending" id="asstPending" style="display:none;"></div>
+  </div>
+  <div class="asst-widget-footer">
+    <div class="asst-input-row">
+      <input type="text" id="asstInput" placeholder="What's going on?" autocomplete="off">
+      <button class="mic-btn" id="asstMicBtn" title="Speak instead of typing" style="display:none;">🎤</button>
+      <button class="add-btn" id="asstSendBtn">Send</button>
+    </div>
+    <div class="status-bar" id="asstStatusBar"></div>
+  </div>
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -358,6 +510,25 @@
   var AI_PROXY_URL = '/api/chat';
   var AI_MODEL = 'claude-haiku-4-5-20251001';
   var WHO_NAMES = ['Michael', 'Alex', 'Cindy', 'Japs', 'JB'];
+  // Per-company accent colors, from each company's own brand guide. Used as highlight
+  // accents on top of the shared house theme (chart series, section borders, hero
+  // chapter tints) - never as a full re-skin.
+  var COMPANY_ACCENT = {
+    'MAAD Solutions': '#0089A3',
+    'Pulse Narrative': '#FF3B1F',
+    'Alexander & Co.': '#D4A017'
+  };
+  var COMPANY_HERO_TINT = {
+    'MAAD Solutions': 'rgba(0,137,163,0.78)',
+    'Pulse Narrative': 'rgba(255,59,31,0.78)',
+    'Alexander & Co.': 'rgba(27,58,43,0.88)'
+  };
+  var COMPANY_TAGLINE = {
+    'MAAD Solutions': 'Tech consulting, internal tools, and the dashboards that keep the other two honest.',
+    'Pulse Narrative': 'We find the pulse. We give it a narrative.',
+    'Alexander & Co.': 'FILL IN - a one-line tagline for the hero chapter.'
+  };
+  function companyAccent(name) { return COMPANY_ACCENT[name] || 'var(--deep-aqua)'; }
   // Which company each person belongs to, for the Money privacy preview.
   var PERSON_COMPANY = {
     'Michael': 'MAAD Solutions',
@@ -366,6 +537,50 @@
     'Japs': 'Pulse Narrative',
     'JB': 'Pulse Narrative'
   };
+  // What the Assistant knows about each business and person going in, so it stops
+  // being generic and starts actually understanding the three companies. Fill in
+  // the "FILL IN" placeholders as that information comes in — each is a one-line
+  // edit, nothing else needs to change.
+  var BUSINESS_CONTEXT = {
+    companies: {
+      'MAAD Solutions': {
+        whatWeDo: 'Tech consulting, internal tools, financial dashboards, and operational diagnostics for small businesses.',
+        typicalWork: ['Internal dashboards and tools', 'Financial/operational diagnostics', 'AI agent and automation builds']
+      },
+      'Pulse Narrative': {
+        whatWeDo: 'Marketing and creative agency — helps businesses tell their story through content, branding, and marketing strategy.',
+        typicalWork: ['Social media management, strategy, and content planning', 'Video production, photography, and short-form content', 'Branding and positioning', 'UGC and creator network campaigns', 'Marketing strategy and business consulting', 'Event coverage', 'Event activations and brand experiences', 'Digital/tech solutions for marketing and operations']
+      },
+      'Alexander & Co.': {
+        whatWeDo: 'FILL IN - Alexander & Co.\'s business description not yet provided.',
+        typicalWork: []
+      }
+    },
+    people: {
+      'Michael': { company: 'MAAD Solutions', role: 'Founder' },
+      'Alex': { company: 'Alexander & Co.', role: 'FILL IN' },
+      'Cindy': { company: 'Alexander & Co.', role: 'FILL IN' },
+      'Japs': { company: 'Pulse Narrative', role: 'Co-Founder' },
+      'JB': { company: 'Pulse Narrative', role: 'Founder' }
+    },
+    // Recurring vendors, clients, or gear brands worth knowing by default, so the
+    // Assistant doesn't have to ask every time. FILL IN as these come up.
+    commonVendorsOrClients: [],
+    // House shorthand - things the five of you say out loud that should map to a
+    // specific real item, e.g. {term: 'the camera', meansGear: 'Sony ZV-E10 II'}.
+    // FILL IN as these come up.
+    shorthand: []
+  };
+  // Hero images for the Overview tab, one per company (plus an optional rotating
+  // set of event photos). Paste a real image URL to replace the branded-gradient
+  // placeholder - Supabase Storage is a natural home for these once you're ready
+  // to upload (same project, no new account needed), but any public image URL works.
+  var HERO_IMAGES = {
+    'MAAD Solutions': '',
+    'Pulse Narrative': '',
+    'Alexander & Co.': ''
+  };
+  var EVENT_PHOTOS = []; // e.g. ['https://.../event1.jpg', 'https://.../event2.jpg']
   // ============================================================
 
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -461,7 +676,7 @@
   // ============================================================
   function initTabs() {
     var panels = {
-      assistant: 'assistantPanel', money: 'moneyPanel', projects: 'projectsPanel',
+      overview: 'overviewPanel', money: 'moneyPanel', projects: 'projectsPanel',
       contacts: 'contactsPanel', gear: 'gearPanel', calendar: 'calendarPanel',
       who: 'whoPanel', todos: 'todosPanel'
     };
@@ -473,6 +688,7 @@
         Object.keys(panels).forEach(function (key) {
           document.getElementById(panels[key]).style.display = (key === tab) ? '' : 'none';
         });
+        if (tab === 'overview') renderOverview();
       });
     });
   }
@@ -480,6 +696,133 @@
   // ============================================================
   // GEAR
   // ============================================================
+  // ============================================================
+  // OVERVIEW (scroll-driven landing tab)
+  // ============================================================
+  var ovMoneyChartInstance = null, ovProjectsChartInstance = null, ovGearChartInstance = null;
+
+  function addDaysISO(dateStr, days) {
+    var p = dateStr.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1, p[2] + days);
+    return isoDate(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function renderOverviewHero() {
+    var stack = document.getElementById('ovHeroStack');
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var tint = COMPANY_HERO_TINT[co.name] || 'rgba(11,32,39,0.8)';
+      var photo = HERO_IMAGES[co.name];
+      var bg = photo ? 'background-image: url(\'' + photo + '\');' : '';
+      html += '<div class="ov-hero-chapter" style="--chapter-tint:' + tint + ';' + bg + '">' +
+        '<div class="ov-hero-kicker">One of three studio companies</div>' +
+        '<h1>' + escapeHtml(co.name) + '</h1>' +
+        '<p>' + escapeHtml(COMPANY_TAGLINE[co.name] || '') + '</p>' +
+        '</div>';
+    });
+    stack.innerHTML = html;
+  }
+
+  function renderOverviewStats() {
+    var monthPrefix = todayISO().slice(0, 7);
+    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
+    var monthEst = visibleMoney.reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
+    var monthActual = visibleMoney.reduce(function (s, i) { return s + (Number(i.actual_cost) || 0); }, 0);
+    var openTodos = todoItems.filter(function (t) { return t.status === 'not-done'; }).length;
+    var overdueTodos = todoItems.filter(isOverdue).length;
+    var gearNeedsAttention = gearItems.filter(function (g) { return g.status === 'needs-repair' || g.status === 'missing'; }).length;
+    var weekEnd = addDaysISO(todayISO(), 6);
+    var thisWeekEvents = calendarItems.filter(function (e) { return e.event_date >= todayISO() && e.event_date <= weekEnd; }).length;
+
+    document.getElementById('ovStatsStrip').innerHTML =
+      '<div class="cell grand"><div class="label">Money this month (est.)</div><div class="value">₱' + monthEst.toLocaleString() + '</div></div>' +
+      '<div class="cell"><div class="label">Open to-dos</div><div class="value">' + openTodos + (overdueTodos ? ' <span style="color:var(--deep-aqua);font-size:13px;">(' + overdueTodos + ' overdue)</span>' : '') + '</div></div>' +
+      '<div class="cell"><div class="label">Gear needing attention</div><div class="value">' + gearNeedsAttention + '</div></div>' +
+      '<div class="cell"><div class="label">This week on the calendar</div><div class="value">' + thisWeekEvents + '</div></div>';
+  }
+
+  function renderOverviewCharts() {
+    if (typeof Chart === 'undefined') return;
+
+    // Money by category, grouped by company
+    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
+    var moneyDatasets = COMPANIES.map(function (co) {
+      return {
+        label: co.name,
+        backgroundColor: companyAccent(co.name),
+        data: GEAR_CATEGORIES.map(function (cat) {
+          return visibleMoney.filter(function (i) { return i.category === cat && i.company_id === co.id; })
+            .reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
+        })
+      };
+    });
+    if (ovMoneyChartInstance) ovMoneyChartInstance.destroy();
+    ovMoneyChartInstance = new Chart(document.getElementById('ovMoneyChart'), {
+      type: 'bar',
+      data: { labels: GEAR_CATEGORIES, datasets: moneyDatasets },
+      options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+    });
+
+    // Projects by company (simple count per company)
+    var projectCounts = COMPANIES.map(function (co) {
+      return projectItems.filter(function (p) { return p.company_id === co.id; }).length;
+    });
+    if (ovProjectsChartInstance) ovProjectsChartInstance.destroy();
+    ovProjectsChartInstance = new Chart(document.getElementById('ovProjectsChart'), {
+      type: 'bar',
+      data: {
+        labels: COMPANIES.map(function (co) { return co.name; }),
+        datasets: [{ data: projectCounts, backgroundColor: COMPANIES.map(function (co) { return companyAccent(co.name); }) }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+
+    // Gear by status - no company dimension on gear, so this one stays status-colored
+    // rather than company-colored; gear is shared equipment, not owned by one company.
+    var gearStatusColors = { 'available': '#0089A3', 'in-use': '#5C7680', 'needs-repair': '#00AEC7', 'missing': '#0B2027' };
+    var gearCounts = GEAR_STATUSES.map(function (s) { return gearItems.filter(function (g) { return g.status === s; }).length; });
+    if (ovGearChartInstance) ovGearChartInstance.destroy();
+    ovGearChartInstance = new Chart(document.getElementById('ovGearChart'), {
+      type: 'doughnut',
+      data: {
+        labels: GEAR_STATUSES.map(function (s) { return GEAR_STATUS_LABEL[s]; }),
+        datasets: [{ data: gearCounts, backgroundColor: GEAR_STATUSES.map(function (s) { return gearStatusColors[s]; }) }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  function renderOverviewGallery() {
+    var gallery = document.getElementById('ovGallery');
+    if (!EVENT_PHOTOS.length) {
+      gallery.innerHTML = '<div class="ov-gallery-empty">Event and studio photos go here once you\'ve got them - drop URLs into EVENT_PHOTOS in the config block.</div>';
+      return;
+    }
+    gallery.innerHTML = EVENT_PHOTOS.map(function (url) {
+      return '<div class="ov-gallery-photo" style="background-image:url(\'' + url + '\');"></div>';
+    }).join('');
+  }
+
+  function renderOverview() {
+    renderOverviewHero();
+    renderOverviewStats();
+    renderOverviewCharts();
+    renderOverviewGallery();
+  }
+
+  function initScrollReveals() {
+    if (!('IntersectionObserver' in window)) {
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('visible'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
+  }
+
   function renderGear() {
     var counts = { available: 0, 'in-use': 0, 'needs-repair': 0, missing: 0 };
     gearItems.forEach(function (g) { counts[g.status] = (counts[g.status] || 0) + 1; });
@@ -582,7 +925,7 @@
     var html = '';
     COMPANIES.forEach(function (co) {
       var secItems = contactItems.filter(function (c) { return c.company_id === co.id; });
-      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      html += '<div class="cat-block"><div class="cat-head co-accent-bar" style="--co-color:' + companyAccent(co.name) + ';"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
       secItems.forEach(function (c) {
         var pendingConfirm = pendingContactDeleteId === c.id;
         html += '<div class="item-row" style="grid-template-columns: 1fr 200px 110px 28px;" data-id="' + c.id + '">';
@@ -668,7 +1011,7 @@
     var html = '';
     COMPANIES.forEach(function (co) {
       var secItems = projectItems.filter(function (p) { return p.company_id === co.id; });
-      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      html += '<div class="cat-block"><div class="cat-head co-accent-bar" style="--co-color:' + companyAccent(co.name) + ';"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
       secItems.forEach(function (p) {
         var pendingConfirm = pendingProjectDeleteId === p.id;
         html += '<div class="item-row" style="grid-template-columns: 1fr 160px 120px 28px;" data-id="' + p.id + '">';
@@ -972,7 +1315,7 @@
     var html = '';
     COMPANIES.forEach(function (co) {
       var secItems = todoItems.filter(function (t) { return t.company_id === co.id; });
-      html += '<div class="cat-block"><div class="cat-head"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
+      html += '<div class="cat-block"><div class="cat-head co-accent-bar" style="--co-color:' + companyAccent(co.name) + ';"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
       secItems.forEach(function (t) {
         var pendingConfirm = pendingTodoDeleteId === t.id, overdue = isOverdue(t);
         html += '<div class="item-row" style="grid-template-columns: 1fr 120px 28px;" data-id="' + t.id + '">';
@@ -1225,10 +1568,33 @@
       visibleMoneyItems: moneyItems.filter(isVisibleToCurrentPerson).map(function (i) { return { id: i.id, name: i.name, category: i.category, company: (companyById(i.company_id) || {}).name, status: i.status, estCost: i.est_cost }; })
     });
   }
+  function buildBusinessContextText() {
+    var lines = [];
+    Object.keys(BUSINESS_CONTEXT.companies).forEach(function (name) {
+      var c = BUSINESS_CONTEXT.companies[name];
+      var line = '- ' + name + ': ' + c.whatWeDo;
+      if (c.typicalWork && c.typicalWork.length) line += ' Typical work: ' + c.typicalWork.join(', ') + '.';
+      lines.push(line);
+    });
+    var peopleLines = Object.keys(BUSINESS_CONTEXT.people).map(function (name) {
+      var p = BUSINESS_CONTEXT.people[name];
+      return name + ' (' + p.role + ', ' + p.company + ')';
+    });
+    var text = 'WHAT EACH COMPANY DOES:\n' + lines.join('\n') + '\n\nPEOPLE AND ROLES:\n' + peopleLines.join('; ') + '\n';
+    if (BUSINESS_CONTEXT.commonVendorsOrClients.length) {
+      text += '\nRECURRING VENDORS/CLIENTS: ' + BUSINESS_CONTEXT.commonVendorsOrClients.join(', ') + '.\n';
+    }
+    if (BUSINESS_CONTEXT.shorthand.length) {
+      text += '\nHOUSE SHORTHAND (resolve these automatically, don\'t ask): ' +
+        BUSINESS_CONTEXT.shorthand.map(function (s) { return '"' + s.term + '" means ' + s.meansGear; }).join('; ') + '.\n';
+    }
+    return text;
+  }
   function buildAssistantRules() {
     return (
       'You are a filing assistant inside "Virtual HQ", a shared internal tool for three small companies working out of one studio: MAAD Solutions, Pulse Narrative, and Alexander & Co. ' +
       'The user talking to you right now is: ' + currentPerson() + '. When they say "I" or "me", that means ' + currentPerson() + '.\n\n' +
+      buildBusinessContextText() + '\n' +
       'You handle two kinds of messages. If the user is asking a QUESTION about existing data ("what\'s overdue for MAAD", "who has the camera", "is Thursday double-booked"), answer it directly and helpfully using CURRENT DATA below, and return an empty actions list. If the user is telling you something to FILE (a meeting, a task, gear status, a new contact), propose structured actions as described below. A single message can contain both a question and something to file - handle both. A single message can also describe several unrelated things to file - handle each independently.\n\n' +
       'CATEGORIES AND FIELDS:\n' +
       '- gear: fields name, category (one of gearCategories), holder (who has it now, or empty), status (one of gearStatuses), note (optional).\n' +
@@ -1238,7 +1604,7 @@
       '- who: fields area (the responsibility), owner (must be one of people), note (optional).\n' +
       '- todos: fields task, company (one of companies), dueDate (YYYY-MM-DD, optional), status (one of todoStatuses).\n\n' +
       'MATCHING RULE: compare what the user says against the "existing*" lists in CURRENT DATA. If there is exactly one plausible match for something they refer to, propose an "update" using that item\'s id instead of a duplicate. If more than one item is plausibly what they mean, ask a clarifying question and propose no action for that item yet. If nothing plausibly matches, propose "create". Apply the same assume-if-one / ask-if-several logic to any other ambiguous detail: which company, which person, which date.\n\n' +
-      'Reply with ONLY a JSON object, nothing else. No markdown fences, no conversational lead-in like "Sure, here it is:" or "Perfect, I\'ll log that", no text before or after the object. Any warmth or acknowledgment belongs inside the "reply" field, not outside the JSON. Shaped exactly like this:\n' +
+      'Reply with ONLY a JSON object, nothing else. No markdown fences, no conversational lead-in like "Sure, here it is:" or "Perfect, I\'ll log that", no text before or after the object. This applies to every single message, including short ones - if the user just answers your own clarifying question with something like "yes" or a one-word confirmation, your response is still the full JSON object, with the confirmed action now filled in and ready in "actions", not a plain sentence acknowledging their answer. Any warmth or acknowledgment belongs inside the "reply" field, not outside the JSON. Shaped exactly like this:\n' +
       '{"reply": "a short natural conversational line - answer a question, confirm what you understood, or ask a clarifying question here", "actions": [{"module": "gear", "operation": "create", "matchId": null, "summary": "one plain-English line describing this action, for a confirmation list", "fields": {}}]}\n' +
       'If you are only answering a question or asking a clarifying question, return "actions": [].\n\n' +
       'CURRENT DATA:\n' + buildDataSnapshot()
@@ -1351,15 +1717,23 @@
     var textBlock = (data.content || []).find(function (b) { return b.type === 'text'; });
     if (!textBlock) throw new Error('No response text');
     var raw = textBlock.text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
-    // The model is instructed to reply with only JSON, but sometimes wraps it in a
-    // conversational lead-in ("Perfect. I'll log..."). Pull out the outermost {...}
-    // block regardless of what surrounds it, rather than trusting raw to already be clean.
+    // The model is instructed to reply with only JSON, but doesn't always comply,
+    // sometimes it wraps the JSON in a conversational lead-in ("Perfect. I'll log..."),
+    // and sometimes it skips JSON entirely and just replies in plain prose (this shows
+    // up especially on short follow-up turns like "yes"). Handle both gracefully rather
+    // than surfacing a parse error to the user - the model's actual words should never
+    // just get replaced by an error message.
     var firstBrace = raw.indexOf('{');
     var lastBrace = raw.lastIndexOf('}');
     if (firstBrace !== -1 && lastBrace > firstBrace) {
-      raw = raw.substring(firstBrace, lastBrace + 1);
+      var candidate = raw.substring(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch (e) { /* not actually valid JSON - fall through to the plain-text case below */ }
     }
-    return JSON.parse(raw);
+    // No usable JSON found at all - treat the whole reply as a plain conversational
+    // line with nothing to file, rather than erroring out.
+    return { reply: raw, actions: [] };
   }
   async function sendChatMessage() {
     var input = document.getElementById('asstInput');
@@ -1407,9 +1781,26 @@
       listening = true; micBtn.classList.add('listening'); recognizer.start();
     });
   }
+  function openAsstWidget() {
+    document.getElementById('asstWidget').style.display = 'flex';
+    document.getElementById('asstBubbleBtn').style.display = 'none';
+    document.getElementById('asstInput').focus();
+  }
+  function closeAsstWidget() {
+    document.getElementById('asstWidget').style.display = 'none';
+    document.getElementById('asstBubbleBtn').style.display = '';
+  }
   function initAssistant() {
     document.getElementById('asstSendBtn').addEventListener('click', sendChatMessage);
     document.getElementById('asstInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendChatMessage(); });
+    document.getElementById('asstBubbleBtn').addEventListener('click', openAsstWidget);
+    document.getElementById('asstWidgetClose').addEventListener('click', closeAsstWidget);
+    document.querySelectorAll('.asst-quick-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.getElementById('asstInput').value = btn.getAttribute('data-prompt');
+        sendChatMessage();
+      });
+    });
     initVoice();
   }
 
@@ -1432,6 +1823,8 @@
     moneyItems = await sbSelect('money_items');
     moneyGrants = await sbSelect('money_grants');
     renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderWhoDoing(); renderTodos(); renderMoney();
+    renderOverview();
+    initScrollReveals();
     renderChatLog();
   }
 
