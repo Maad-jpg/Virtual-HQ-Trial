@@ -8,43 +8,49 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <style>
   :root {
-    --ink: #0B2027;
-    --ink-soft: #123039;
-    --paper: #FFFFFF;
-    --mist: #EAF6F7;
-    --slate: #5C7680;
-    --aqua: #00FFFF;
-    --deep-aqua: #0089A3;
+    /* Warm stone/taupe house theme - intentionally neutral, doesn't share a hue
+       family with any of the three companies' own brand colors (MAAD's teal,
+       Pulse's red, Alexander's green/mustard), so their accents stay distinct
+       rather than competing with the chrome around them. Variable names kept
+       as-is (--aqua/--deep-aqua) even though the palette is no longer blue, to
+       avoid touching every reference throughout the stylesheet. */
+    --ink: #262220;
+    --ink-soft: #332E2A;
+    --paper: #FAF8F5;
+    --mist: #F0ECE6;
+    --slate: #6B6259;
+    --aqua: #C9B896;
+    --deep-aqua: #9C8F7D;
 
     --bg: var(--ink);
     --surface: var(--paper);
     --surface-alt: var(--mist);
-    --border: #D6E3E5;
+    --border: #E3DDD4;
     --text-main: var(--ink);
     --text-soft: var(--slate);
     --text-inverse: var(--paper);
     --accent: var(--deep-aqua);
-    --shadow: rgba(11,32,39,0.14);
+    --shadow: rgba(38,34,32,0.14);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #071820;
-      --surface: #0F262E;
-      --surface-alt: #15303A;
-      --border: rgba(234,246,247,0.12);
-      --text-main: #EAF6F7;
-      --text-soft: #8FA7AE;
+      --bg: #1A1714;
+      --surface: #262220;
+      --surface-alt: #332E2A;
+      --border: rgba(250,248,245,0.12);
+      --text-main: #FAF8F5;
+      --text-soft: #B8ADA0;
       --accent: var(--aqua);
       --shadow: rgba(0,0,0,0.4);
     }
   }
   :root[data-theme="dark"] {
-    --bg: #071820;
-    --surface: #0F262E;
-    --surface-alt: #15303A;
-    --border: rgba(234,246,247,0.12);
-    --text-main: #EAF6F7;
-    --text-soft: #8FA7AE;
+    --bg: #1A1714;
+    --surface: #262220;
+    --surface-alt: #332E2A;
+    --border: rgba(250,248,245,0.12);
+    --text-main: #FAF8F5;
+    --text-soft: #B8ADA0;
     --accent: var(--aqua);
     --shadow: rgba(0,0,0,0.4);
   }
@@ -82,8 +88,8 @@
     border-bottom: 3px solid var(--deep-aqua);
   }
   header.top h1 { font-size: 27px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; color: var(--paper); }
-  header.top p { margin: 0; color: #9FB8BE; font-size: 14px; }
-  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9FB8BE; }
+  header.top p { margin: 0; color: #B8ADA0; font-size: 14px; }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #B8ADA0; }
   .who select {
     font-family: Calibri, Carlito, Arial, sans-serif;
     font-size: 13px; background: var(--ink-soft); color: var(--paper);
@@ -189,14 +195,14 @@
   .status-gear-available { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
   .status-gear-in-use { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
   .status-gear-needs-repair { background: var(--deep-aqua); color: var(--paper); }
-  .status-gear-missing { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-gear-missing { background: #332E2A; color: var(--paper); border: 1px solid var(--deep-aqua); }
   .status-contact-contact { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
   .status-contact-client { background: var(--deep-aqua); color: var(--paper); }
   .status-contact-vendor { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
-  .status-contact-collaborator { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-contact-collaborator { background: #332E2A; color: var(--paper); border: 1px solid var(--deep-aqua); }
   .status-project-not-started { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
   .status-project-in-progress { background: rgba(0,137,163,0.16); color: var(--deep-aqua); }
-  .status-project-blocked { background: #0F262E; color: var(--paper); border: 1px solid var(--deep-aqua); }
+  .status-project-blocked { background: #332E2A; color: var(--paper); border: 1px solid var(--deep-aqua); }
   .status-project-done { background: var(--deep-aqua); color: var(--paper); }
   .who-owner-pill { background: var(--deep-aqua); color: var(--paper); font-weight: 700; text-align: center; }
   .status-todo-not-done { background: var(--surface-alt); color: var(--text-soft); border-color: var(--border); }
@@ -255,7 +261,7 @@
   }
   .asst-widget-heading { flex: 1; display: flex; flex-direction: column; line-height: 1.3; }
   .asst-widget-heading strong { font-size: 14px; }
-  .asst-widget-heading span { font-size: 11.5px; color: #9FB8BE; }
+  .asst-widget-heading span { font-size: 11.5px; color: #B8ADA0; }
   .asst-widget-close {
     background: none; border: none; color: var(--paper); font-size: 20px;
     cursor: pointer; line-height: 1; padding: 4px;
@@ -779,7 +785,7 @@
 
     // Gear by status - no company dimension on gear, so this one stays status-colored
     // rather than company-colored; gear is shared equipment, not owned by one company.
-    var gearStatusColors = { 'available': '#0089A3', 'in-use': '#5C7680', 'needs-repair': '#00AEC7', 'missing': '#0B2027' };
+    var gearStatusColors = { 'available': '#9C8F7D', 'in-use': '#B8ADA0', 'needs-repair': '#6B6259', 'missing': '#262220' };
     var gearCounts = GEAR_STATUSES.map(function (s) { return gearItems.filter(function (g) { return g.status === s; }).length; });
     if (ovGearChartInstance) ovGearChartInstance.destroy();
     ovGearChartInstance = new Chart(document.getElementById('ovGearChart'), {
