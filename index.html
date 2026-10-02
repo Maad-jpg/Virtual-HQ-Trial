@@ -66,7 +66,7 @@
   }
   h1, h2 { font-family: Cambria, Georgia, 'Times New Roman', serif; }
 
-  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 28px 32px 80px; }
 
   .trial-banner {
     background: var(--deep-aqua);
@@ -165,7 +165,7 @@
     font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;
     color: var(--paper); opacity: 0.85; margin-bottom: 8px;
   }
-  .ov-hero-chapter h1 { font-size: 34px; color: var(--paper); margin: 0 0 10px; line-height: 1.15; }
+  .ov-hero-chapter h1 { font-size: 34px; color: var(--paper); margin: 0 0 10px; line-height: 1.15; min-height: 2.3em; display: flex; align-items: flex-end; }
   .ov-hero-chapter p { font-size: 15px; color: var(--paper); opacity: 0.92; max-width: 56ch; margin: 0; }
 
   .ov-scene { padding: 56px 32px; }
@@ -265,10 +265,10 @@
   .asst-bubble-btn {
     position: fixed; bottom: 24px; right: 24px; z-index: 1000;
     width: 60px; height: 60px; border-radius: 50%; border: none;
-    background: var(--deep-aqua); color: var(--paper); font-size: 26px;
+    background: var(--brand-gradient); color: var(--paper); font-size: 26px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.35); cursor: pointer;
   }
-  .asst-bubble-btn:hover { background: #007289; }
+  .asst-bubble-btn:hover { filter: brightness(1.1); }
   .asst-widget {
     position: fixed; bottom: 98px; right: 24px; z-index: 1000;
     width: 380px; max-width: calc(100vw - 32px); max-height: 70vh;
@@ -278,6 +278,7 @@
   .asst-widget-header {
     background: var(--ink); color: var(--paper); padding: 14px 16px;
     display: flex; align-items: center; gap: 10px; flex: none;
+    border-top: 3px solid transparent; border-image: var(--brand-gradient) 1;
   }
   .asst-widget-avatar {
     width: 34px; height: 34px; border-radius: 50%; background: var(--deep-aqua);
@@ -419,15 +420,14 @@
   <section class="panel ov-panel" id="overviewPanel">
     <div class="ov-row ov-hero-row" id="ovHeroRow"></div>
 
+    <div class="ov-scene reveal" id="ovGalleryScene">
+      <h2 class="ov-scene-title">From the studio</h2>
+      <div class="ov-row" id="ovGalleryRow"></div>
+    </div>
+
     <div class="ov-scene reveal" id="ovStatsScene">
       <h2 class="ov-scene-title">Where things stand today</h2>
       <div class="ov-row" id="ovStatsRow"></div>
-    </div>
-
-    <div class="ov-scene reveal" id="ovSharedScene">
-      <h2 class="ov-scene-title">Studio-wide</h2>
-      <p class="ov-scene-note">Gear is shared equipment, not owned by any one company, so it sits here on its own rather than forced into a column.</p>
-      <div class="ov-shared-row" id="ovSharedRow"></div>
     </div>
 
     <div class="ov-scene reveal" id="ovChartsScene">
@@ -435,9 +435,10 @@
       <div class="ov-row" id="ovChartsRow"></div>
     </div>
 
-    <div class="ov-scene reveal" id="ovGalleryScene">
-      <h2 class="ov-scene-title">From the studio</h2>
-      <div class="ov-row" id="ovGalleryRow"></div>
+    <div class="ov-scene reveal" id="ovSharedScene">
+      <h2 class="ov-scene-title">Studio-wide</h2>
+      <p class="ov-scene-note">Gear is shared equipment, not owned by any one company, so it sits here on its own rather than forced into a column.</p>
+      <div class="ov-shared-row" id="ovSharedRow"></div>
     </div>
 
     <div class="status-bar" id="overviewStatusBar"></div>
