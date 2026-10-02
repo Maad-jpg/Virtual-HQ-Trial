@@ -130,10 +130,29 @@
   .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
   .reveal.visible { opacity: 1; transform: none; }
 
-  .ov-hero-stack { display: flex; flex-direction: column; }
+  /* Three-column company layout - side by side from tablet width up, stacked
+     full-width below that since three columns genuinely can't stay readable
+     on a phone screen. */
+  .ov-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .ov-hero-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+  .ov-col { background: var(--surface-alt); border-radius: 10px; padding: 18px; }
+  .ov-col-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .ov-col-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .ov-col-head h4 { font-size: 12.5px; margin: 0; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); font-weight: 700; }
+  .ov-stat-mini { margin-bottom: 14px; }
+  .ov-stat-mini:last-child { margin-bottom: 0; }
+  .ov-stat-mini .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-soft); margin-bottom: 4px; }
+  .ov-stat-mini .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ov-scene-note { font-size: 12.5px; color: var(--text-soft); margin: -10px 0 18px; }
+  .ov-shared-row { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
+  .ov-chart-mini canvas { max-height: 150px; }
+  @media (max-width: 860px) {
+    .ov-row, .ov-hero-row, .ov-shared-row { grid-template-columns: 1fr; }
+  }
+
   .ov-hero-chapter {
-    position: relative; min-height: 420px; display: flex; flex-direction: column;
-    align-items: flex-start; justify-content: flex-end; padding: 48px 36px;
+    position: relative; min-height: 360px; display: flex; flex-direction: column;
+    align-items: flex-start; justify-content: flex-end; padding: 40px 28px;
     background-size: cover; background-position: center; overflow: hidden;
   }
   .ov-hero-chapter::before {
@@ -152,14 +171,10 @@
   .ov-scene { padding: 56px 32px; }
   .ov-scene-title { font-size: 22px; margin: 0 0 20px; }
 
-  .ov-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-  .ov-chart-card { background: var(--surface-alt); border-radius: 10px; padding: 18px; }
-  .ov-chart-card h3 { font-size: 14px; margin: 0 0 14px; color: var(--text-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
-  .ov-chart-card canvas { max-height: 220px; }
-
-  .ov-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .ov-gallery-photo { aspect-ratio: 4/3; border-radius: 8px; background-size: cover; background-position: center; }
-  .ov-gallery-empty { color: var(--text-soft); font-size: 13.5px; padding: 30px; text-align: center; background: var(--surface-alt); border-radius: 10px; grid-column: 1 / -1; }
+  .ov-chart-card canvas { max-height: 180px; }
+  .ov-gallery-col-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .ov-gallery-photo { aspect-ratio: 4/3; border-radius: 6px; background-size: cover; background-position: center; }
+  .ov-gallery-empty { color: var(--text-soft); font-size: 12.5px; padding: 18px 10px; text-align: center; }
 
   .co-accent-bar { border-left: 4px solid var(--co-color, var(--border)); padding-left: 10px !important; }
 
@@ -402,34 +417,27 @@
   </nav>
 
   <section class="panel ov-panel" id="overviewPanel">
-    <div class="ov-hero-stack" id="ovHeroStack"></div>
+    <div class="ov-row ov-hero-row" id="ovHeroRow"></div>
 
     <div class="ov-scene reveal" id="ovStatsScene">
       <h2 class="ov-scene-title">Where things stand today</h2>
-      <div class="totals-strip" id="ovStatsStrip"></div>
+      <div class="ov-row" id="ovStatsRow"></div>
+    </div>
+
+    <div class="ov-scene reveal" id="ovSharedScene">
+      <h2 class="ov-scene-title">Studio-wide</h2>
+      <p class="ov-scene-note">Gear is shared equipment, not owned by any one company, so it sits here on its own rather than forced into a column.</p>
+      <div class="ov-shared-row" id="ovSharedRow"></div>
     </div>
 
     <div class="ov-scene reveal" id="ovChartsScene">
       <h2 class="ov-scene-title">The numbers</h2>
-      <div class="ov-charts">
-        <div class="ov-chart-card">
-          <h3>Money by category</h3>
-          <canvas id="ovMoneyChart"></canvas>
-        </div>
-        <div class="ov-chart-card">
-          <h3>Projects by company</h3>
-          <canvas id="ovProjectsChart"></canvas>
-        </div>
-        <div class="ov-chart-card">
-          <h3>Gear by status</h3>
-          <canvas id="ovGearChart"></canvas>
-        </div>
-      </div>
+      <div class="ov-row" id="ovChartsRow"></div>
     </div>
 
     <div class="ov-scene reveal" id="ovGalleryScene">
       <h2 class="ov-scene-title">From the studio</h2>
-      <div class="ov-gallery" id="ovGallery"></div>
+      <div class="ov-row" id="ovGalleryRow"></div>
     </div>
 
     <div class="status-bar" id="overviewStatusBar"></div>
@@ -596,7 +604,11 @@
     'Pulse Narrative': '',
     'Alexander & Co.': ''
   };
-  var EVENT_PHOTOS = []; // e.g. ['https://.../event1.jpg', 'https://.../event2.jpg']
+  var EVENT_PHOTOS = {
+    'MAAD Solutions': [],
+    'Pulse Narrative': [],
+    'Alexander & Co.': []
+  }; // e.g. 'MAAD Solutions': ['https://.../event1.jpg', 'https://.../event2.jpg']
   // ============================================================
 
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -715,7 +727,9 @@
   // ============================================================
   // OVERVIEW (scroll-driven landing tab)
   // ============================================================
-  var ovMoneyChartInstance = null, ovProjectsChartInstance = null, ovGearChartInstance = null;
+  // Per-company chart instances, keyed by company id, so each column's two
+  // mini-charts can be destroyed and redrawn independently on re-render.
+  var ovMoneyChartInstances = {}, ovProjectChartInstances = {}, ovGearChartInstance = null;
 
   function addDaysISO(dateStr, days) {
     var p = dateStr.split('-').map(Number);
@@ -723,8 +737,12 @@
     return isoDate(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
+  function colHeadHtml(co) {
+    return '<div class="ov-col-head"><span class="ov-col-dot" style="background:' + companyAccent(co.name) + ';"></span><h4>' + escapeHtml(co.name) + '</h4></div>';
+  }
+
   function renderOverviewHero() {
-    var stack = document.getElementById('ovHeroStack');
+    var row = document.getElementById('ovHeroRow');
     var html = '';
     COMPANIES.forEach(function (co) {
       var tint = COMPANY_HERO_TINT[co.name] || 'rgba(11,32,39,0.8)';
@@ -736,65 +754,41 @@
         '<p>' + escapeHtml(COMPANY_TAGLINE[co.name] || '') + '</p>' +
         '</div>';
     });
-    stack.innerHTML = html;
+    row.innerHTML = html;
   }
 
   function renderOverviewStats() {
     var monthPrefix = todayISO().slice(0, 7);
-    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
-    var monthEst = visibleMoney.reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
-    var monthActual = visibleMoney.reduce(function (s, i) { return s + (Number(i.actual_cost) || 0); }, 0);
-    var openTodos = todoItems.filter(function (t) { return t.status === 'not-done'; }).length;
-    var overdueTodos = todoItems.filter(isOverdue).length;
-    var gearNeedsAttention = gearItems.filter(function (g) { return g.status === 'needs-repair' || g.status === 'missing'; }).length;
     var weekEnd = addDaysISO(todayISO(), 6);
-    var thisWeekEvents = calendarItems.filter(function (e) { return e.event_date >= todayISO() && e.event_date <= weekEnd; }).length;
+    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var coMoney = visibleMoney.filter(function (i) { return i.company_id === co.id; });
+      var monthEst = coMoney.reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
+      var coTodos = todoItems.filter(function (t) { return t.company_id === co.id; });
+      var openTodos = coTodos.filter(function (t) { return t.status === 'not-done'; }).length;
+      var overdueTodos = coTodos.filter(isOverdue).length;
+      var coWeekEvents = calendarItems.filter(function (e) {
+        return PERSON_COMPANY[e.who] === co.name && e.event_date >= todayISO() && e.event_date <= weekEnd;
+      }).length;
 
-    document.getElementById('ovStatsStrip').innerHTML =
-      '<div class="cell grand"><div class="label">Money this month (est.)</div><div class="value">₱' + monthEst.toLocaleString() + '</div></div>' +
-      '<div class="cell"><div class="label">Open to-dos</div><div class="value">' + openTodos + (overdueTodos ? ' <span style="color:var(--deep-aqua);font-size:13px;">(' + overdueTodos + ' overdue)</span>' : '') + '</div></div>' +
-      '<div class="cell"><div class="label">Gear needing attention</div><div class="value">' + gearNeedsAttention + '</div></div>' +
-      '<div class="cell"><div class="label">This week on the calendar</div><div class="value">' + thisWeekEvents + '</div></div>';
+      html += '<div class="ov-col">' + colHeadHtml(co) +
+        '<div class="ov-stat-mini"><div class="label">Money this month (est.)</div><div class="value">₱' + monthEst.toLocaleString() + '</div></div>' +
+        '<div class="ov-stat-mini"><div class="label">Open to-dos</div><div class="value">' + openTodos +
+        (overdueTodos ? ' <span style="color:' + companyAccent(co.name) + ';font-size:13px;">(' + overdueTodos + ' overdue)</span>' : '') + '</div></div>' +
+        '<div class="ov-stat-mini"><div class="label">This week on the calendar</div><div class="value">' + coWeekEvents + '</div></div>' +
+        '</div>';
+    });
+    document.getElementById('ovStatsRow').innerHTML = html;
   }
 
-  function renderOverviewCharts() {
+  function renderOverviewShared() {
+    var gearNeedsAttention = gearItems.filter(function (g) { return g.status === 'needs-repair' || g.status === 'missing'; }).length;
+    document.getElementById('ovSharedRow').innerHTML =
+      '<div class="ov-col"><div class="ov-stat-mini"><div class="label">Gear needing attention</div><div class="value">' + gearNeedsAttention + ' of ' + gearItems.length + '</div></div></div>' +
+      '<div class="ov-col ov-chart-mini"><canvas id="ovGearChart"></canvas></div>';
+
     if (typeof Chart === 'undefined') return;
-
-    // Money by category, grouped by company
-    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
-    var moneyDatasets = COMPANIES.map(function (co) {
-      return {
-        label: co.name,
-        backgroundColor: companyAccent(co.name),
-        data: GEAR_CATEGORIES.map(function (cat) {
-          return visibleMoney.filter(function (i) { return i.category === cat && i.company_id === co.id; })
-            .reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
-        })
-      };
-    });
-    if (ovMoneyChartInstance) ovMoneyChartInstance.destroy();
-    ovMoneyChartInstance = new Chart(document.getElementById('ovMoneyChart'), {
-      type: 'bar',
-      data: { labels: GEAR_CATEGORIES, datasets: moneyDatasets },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
-    });
-
-    // Projects by company (simple count per company)
-    var projectCounts = COMPANIES.map(function (co) {
-      return projectItems.filter(function (p) { return p.company_id === co.id; }).length;
-    });
-    if (ovProjectsChartInstance) ovProjectsChartInstance.destroy();
-    ovProjectsChartInstance = new Chart(document.getElementById('ovProjectsChart'), {
-      type: 'bar',
-      data: {
-        labels: COMPANIES.map(function (co) { return co.name; }),
-        datasets: [{ data: projectCounts, backgroundColor: COMPANIES.map(function (co) { return companyAccent(co.name); }) }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-    });
-
-    // Gear by status - no company dimension on gear, so this one stays status-colored
-    // rather than company-colored; gear is shared equipment, not owned by one company.
     var gearStatusColors = { 'available': '#71767A', 'in-use': '#9AA0A6', 'needs-repair': '#4A4D50', 'missing': '#18191B' };
     var gearCounts = GEAR_STATUSES.map(function (s) { return gearItems.filter(function (g) { return g.status === s; }).length; });
     if (ovGearChartInstance) ovGearChartInstance.destroy();
@@ -804,24 +798,69 @@
         labels: GEAR_STATUSES.map(function (s) { return GEAR_STATUS_LABEL[s]; }),
         datasets: [{ data: gearCounts, backgroundColor: GEAR_STATUSES.map(function (s) { return gearStatusColors[s]; }) }]
       },
-      options: { responsive: true, maintainAspectRatio: false }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10.5 } } } } }
+    });
+  }
+
+  function renderOverviewCharts() {
+    var visibleMoney = moneyItems.filter(isVisibleToCurrentPerson);
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      html += '<div class="ov-col">' + colHeadHtml(co) +
+        '<div class="ov-chart-mini" style="margin-bottom:16px;"><canvas id="ovMoneyChart-' + co.id + '"></canvas></div>' +
+        '<div class="ov-chart-mini"><canvas id="ovProjChart-' + co.id + '"></canvas></div>' +
+        '</div>';
+    });
+    document.getElementById('ovChartsRow').innerHTML = html;
+
+    if (typeof Chart === 'undefined') return;
+    COMPANIES.forEach(function (co) {
+      var coMoney = visibleMoney.filter(function (i) { return i.company_id === co.id; });
+      var moneyData = GEAR_CATEGORIES.map(function (cat) {
+        return coMoney.filter(function (i) { return i.category === cat; }).reduce(function (s, i) { return s + (Number(i.est_cost) || 0); }, 0);
+      });
+      if (ovMoneyChartInstances[co.id]) ovMoneyChartInstances[co.id].destroy();
+      ovMoneyChartInstances[co.id] = new Chart(document.getElementById('ovMoneyChart-' + co.id), {
+        type: 'bar',
+        data: { labels: GEAR_CATEGORIES.map(function (c) { return c.split(' ')[0]; }), datasets: [{ data: moneyData, backgroundColor: companyAccent(co.name) }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } } }
+      });
+
+      var coProjects = projectItems.filter(function (p) { return p.company_id === co.id; });
+      var statusCounts = PROJECT_STATUSES.map(function (s) { return coProjects.filter(function (p) { return p.status === s; }).length; });
+      if (ovProjectChartInstances[co.id]) ovProjectChartInstances[co.id].destroy();
+      ovProjectChartInstances[co.id] = new Chart(document.getElementById('ovProjChart-' + co.id), {
+        type: 'doughnut',
+        data: {
+          labels: PROJECT_STATUSES.map(function (s) { return PROJECT_STATUS_LABEL[s]; }),
+          datasets: [{ data: statusCounts, backgroundColor: [companyAccent(co.name) + '55', companyAccent(co.name) + '99', companyAccent(co.name) + 'CC', companyAccent(co.name)] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 8, font: { size: 9 } } } } }
+      });
     });
   }
 
   function renderOverviewGallery() {
-    var gallery = document.getElementById('ovGallery');
-    if (!EVENT_PHOTOS.length) {
-      gallery.innerHTML = '<div class="ov-gallery-empty">Event and studio photos go here once you\'ve got them - drop URLs into EVENT_PHOTOS in the config block.</div>';
-      return;
-    }
-    gallery.innerHTML = EVENT_PHOTOS.map(function (url) {
-      return '<div class="ov-gallery-photo" style="background-image:url(\'' + url + '\');"></div>';
-    }).join('');
+    var html = '';
+    COMPANIES.forEach(function (co) {
+      var photos = EVENT_PHOTOS[co.name] || [];
+      html += '<div class="ov-col">' + colHeadHtml(co);
+      if (!photos.length) {
+        html += '<div class="ov-gallery-empty">Photos go here once you\'ve got them - drop URLs into EVENT_PHOTOS[\'' + escapeHtml(co.name) + '\'] in the config block.</div>';
+      } else {
+        html += '<div class="ov-gallery-col-grid">' + photos.map(function (url) {
+          return '<div class="ov-gallery-photo" style="background-image:url(\'' + url + '\');"></div>';
+        }).join('') + '</div>';
+      }
+      html += '</div>';
+    });
+    document.getElementById('ovGalleryRow').innerHTML = html;
   }
 
   function renderOverview() {
     renderOverviewHero();
     renderOverviewStats();
+    renderOverviewShared();
     renderOverviewCharts();
     renderOverviewGallery();
   }
