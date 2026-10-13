@@ -98,7 +98,12 @@
     border: 1px solid #3A3C3F; border-radius: 4px; padding: 6px 8px;
   }
 
-  nav.tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 24px; padding-bottom: 2px; }
+  nav.tabs {
+    display: flex; gap: 4px; overflow-x: auto; margin-bottom: 24px; padding-bottom: 2px;
+    /* Stays pinned to the top of the window while the page scrolls. Needs a solid
+       background so content scrolling underneath doesn't show through. */
+    position: sticky; top: 0; z-index: 900; background: var(--bg); padding-top: 10px;
+  }
   nav.tabs button {
     flex: none; background: transparent; border: none; border-bottom: 3px solid transparent;
     color: #9AA0A6; font-family: Calibri, Carlito, Arial, sans-serif; font-weight: 700;
@@ -357,11 +362,28 @@
     border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text-main); width: 100%;
   }
   .add-row input::placeholder { color: var(--text-soft); }
+  .edit-row { background: var(--surface-alt); }
+  .edit-row input {
+    font-family: Calibri, Carlito, Arial, sans-serif; font-size: 13px; padding: 8px 9px;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text-main); width: 100%;
+  }
+  .added-by { font-style: italic; }
   .add-btn { background: var(--deep-aqua); color: #fff; border: none; border-radius: 4px; font-family: Calibri, Carlito, Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 8px 12px; cursor: pointer; }
   .add-btn:hover { background: #007289; }
 
   .empty-state { text-align: center; padding: 40px 20px; color: var(--text-soft); font-size: 14px; }
   .status-bar { font-size: 11.5px; color: var(--text-soft); margin-top: 14px; text-align: right; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); z-index: 1200;
+    background: var(--ink); color: var(--paper); font-size: 13px; padding: 11px 18px;
+    border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    border-left: 3px solid var(--co-pulse); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .who select.needs-name { outline: 2px solid var(--co-pulse); outline-offset: 2px; animation: nameNudge 0.5s ease 2; }
+  @keyframes nameNudge { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
   .money-privacy-note {
     background: var(--surface-alt); border-left: 3px solid var(--accent); border-radius: 4px;
@@ -397,6 +419,7 @@
     <div class="who">
       <span>Logged as</span>
       <select id="whoSelect">
+        <option value="">Select your name</option>
         <option>Michael</option>
         <option>Alex</option>
         <option>Cindy</option>
@@ -408,13 +431,12 @@
 
   <nav class="tabs" id="tabNav">
     <button class="active" data-tab="overview">Overview</button>
-    <button data-tab="money">Money</button>
+    <button data-tab="todos">To-dos</button>
     <button data-tab="projects">Projects</button>
+    <button data-tab="calendar">Calendar</button>
     <button data-tab="contacts">Contacts</button>
     <button data-tab="gear">Gear</button>
-    <button data-tab="calendar">Calendar</button>
-    <button data-tab="who">Who's Doing What</button>
-    <button data-tab="todos">To-dos</button>
+    <button data-tab="money">Money</button>
   </nav>
 
   <section class="panel ov-panel" id="overviewPanel">
@@ -475,12 +497,6 @@
     <div class="cal-grid" id="calGrid"></div>
     <div id="calDayPanel"></div>
     <div class="status-bar" id="calendarStatusBar">loading...</div>
-  </section>
-
-  <section class="panel" id="whoPanel" style="display:none;">
-    <div class="totals-strip" id="whoTotalsStrip"></div>
-    <div id="whoList"></div>
-    <div class="status-bar" id="whoStatusBar">loading...</div>
   </section>
 
   <section class="panel" id="todosPanel" style="display:none;">
@@ -616,7 +632,7 @@
 
   var COMPANIES = [];
   var gearItems = [], contactItems = [], projectItems = [], calendarItems = [],
-      responsibilityItems = [], todoItems = [], moneyItems = [], moneyGrants = [];
+      todoItems = [], moneyItems = [], moneyGrants = [];
 
   var GEAR_CATEGORIES = ['Tech', 'Camera', 'Lighting', 'Podcast & Audio', 'Studio & Furniture'];
   var GEAR_STATUSES = ['available', 'in-use', 'needs-repair', 'missing'];
@@ -635,8 +651,8 @@
   var pendingGearDeleteId = null, pendingGearDeleteTimer = null;
   var pendingContactDeleteId = null, pendingContactDeleteTimer = null;
   var pendingProjectDeleteId = null, pendingProjectDeleteTimer = null;
+  var editingProjectId = null;
   var pendingCalDeleteId = null, pendingCalDeleteTimer = null;
-  var pendingWhoDeleteId = null, pendingWhoDeleteTimer = null;
   var pendingTodoDeleteId = null, pendingTodoDeleteTimer = null;
   var pendingMoneyDeleteId = null, pendingMoneyDeleteTimer = null;
   var openShareItemId = null;
@@ -652,7 +668,9 @@
     });
   }
   function currentPerson() { return document.getElementById('whoSelect').value; }
-  function currentPersonCompanyName() { return PERSON_COMPANY[currentPerson()] || COMPANIES[0].name; }
+  // Empty string when nobody's picked a name yet - Money then shows only what's been
+  // shared publicly, rather than silently falling back to one company's view.
+  function currentPersonCompanyName() { return PERSON_COMPANY[currentPerson()] || ''; }
   function companyById(id) { return COMPANIES.find(function (c) { return c.id === id; }); }
   function companyByName(name) { return COMPANIES.find(function (c) { return c.name === name; }); }
   function todayISO() { var t = new Date(); return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()); }
@@ -690,14 +708,59 @@
   // ============================================================
   // WHO
   // ============================================================
+  function showToast(msg) {
+    var el = document.getElementById('toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function () { el.classList.remove('show'); }, 2600);
+  }
+
+  function hasName() { return !!currentPerson(); }
+
+  function promptForName() {
+    var sel = document.getElementById('whoSelect');
+    sel.classList.add('needs-name');
+    sel.focus();
+    showToast('Pick your name first (top right), so what you add carries it.');
+    setTimeout(function () { sel.classList.remove('needs-name'); }, 2400);
+  }
+
+  // Until someone picks their name, block every add, edit, status change and delete.
+  // Runs in the capture phase on the document, so it fires before any control's own
+  // handler and can stop it - one guard instead of a check in 25 places.
+  function initNameGuard() {
+    var MUTATING = '.add-btn, .status-pill, .del-btn, .share-btn, .grant-add-btn, .revoke-grant-btn, .edit-btn, .save-edit-btn, .asst-confirm-btn';
+    document.addEventListener('click', function (e) {
+      if (hasName() || !e.target.closest) return;
+      if (e.target.closest(MUTATING)) { e.stopPropagation(); e.preventDefault(); promptForName(); }
+    }, true);
+    document.addEventListener('change', function (e) {
+      if (hasName() || !e.target.closest) return;
+      if (e.target.closest('.item-cost')) { e.stopPropagation(); promptForName(); renderAll(); }
+    }, true);
+  }
+
   function initWho() {
     var sel = document.getElementById('whoSelect');
+    // Each browser remembers its own pick, so people choose once per device, not on
+    // every visit. A first visit (or a cleared browser) starts blank.
     var saved = localStorage.getItem('vhq-who');
     if (saved && WHO_NAMES.indexOf(saved) !== -1) sel.value = saved;
     sel.addEventListener('change', function () {
       localStorage.setItem('vhq-who', sel.value);
       renderMoney();
     });
+    initNameGuard();
+  }
+
+  function renderAll() {
+    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderTodos(); renderMoney();
   }
 
   // ============================================================
@@ -707,7 +770,7 @@
     var panels = {
       overview: 'overviewPanel', money: 'moneyPanel', projects: 'projectsPanel',
       contacts: 'contactsPanel', gear: 'gearPanel', calendar: 'calendarPanel',
-      who: 'whoPanel', todos: 'todosPanel'
+      todos: 'todosPanel'
     };
     document.querySelectorAll('#tabNav button').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -896,7 +959,8 @@
       catItems.forEach(function (g) {
         var pendingConfirm = pendingGearDeleteId === g.id;
         html += '<div class="item-row" style="grid-template-columns: 1fr 140px 96px 28px;" data-id="' + g.id + '">';
-        html += '<div class="item-name">' + escapeHtml(g.name) + (g.note ? '<span class="note">' + escapeHtml(g.note) + '</span>' : '') + '</div>';
+        html += '<div class="item-name">' + escapeHtml(g.name) + (g.note ? '<span class="note">' + escapeHtml(g.note) + '</span>' : '') +
+          (g.created_by ? '<span class="note added-by">Added by ' + escapeHtml(g.created_by) + '</span>' : '') + '</div>';
         html += '<input class="item-cost gear-holder-input" type="text" value="' + escapeHtml(g.holder || '') + '" placeholder="who has it" data-id="' + g.id + '" style="text-align:left;">';
         html += '<div class="status-pill gear-status-pill status-gear-' + g.status + '" data-id="' + g.id + '">' + GEAR_STATUS_LABEL[g.status] + '</div>';
         html += '<button class="del-btn gear-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + g.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button>';
@@ -1070,11 +1134,21 @@
       html += '<div class="cat-block"><div class="cat-head co-accent-bar" style="--co-color:' + companyAccent(co.name) + ';"><h2>' + co.name + '</h2><span class="subtotal">' + secItems.length + '</span></div>';
       secItems.forEach(function (p) {
         var pendingConfirm = pendingProjectDeleteId === p.id;
-        html += '<div class="item-row" style="grid-template-columns: 1fr 160px 120px 28px;" data-id="' + p.id + '">';
-        html += '<div class="item-name">' + escapeHtml(p.name) + (p.note ? '<span class="note">' + escapeHtml(p.note) + '</span>' : '') + '</div>';
-        html += '<div class="item-name" style="font-size:13px;">' + escapeHtml(p.owner || '—') + '</div>';
-        html += '<div class="status-pill project-status-pill status-project-' + p.status + '" data-id="' + p.id + '">' + PROJECT_STATUS_LABEL[p.status] + '</div>';
-        html += '<button class="del-btn project-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + p.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+        if (editingProjectId === p.id) {
+          html += '<div class="item-row edit-row" style="grid-template-columns: 1.3fr 1fr 1.3fr 72px 72px;" data-id="' + p.id + '">' +
+            '<input type="text" class="edit-project-name" value="' + escapeHtml(p.name) + '" placeholder="Project name">' +
+            '<input type="text" class="edit-project-owner" value="' + escapeHtml(p.owner || '') + '" placeholder="Owner">' +
+            '<input type="text" class="edit-project-note" value="' + escapeHtml(p.note || '') + '" placeholder="Note (optional)">' +
+            '<button class="add-btn save-edit-btn project-save-btn" data-id="' + p.id + '">Save</button>' +
+            '<button class="asst-cancel-btn project-cancel-btn" data-id="' + p.id + '">Cancel</button></div>';
+        } else {
+          html += '<div class="item-row" style="grid-template-columns: 1fr 160px 120px 30px 28px;" data-id="' + p.id + '">';
+          html += '<div class="item-name">' + escapeHtml(p.name) + (p.note ? '<span class="note">' + escapeHtml(p.note) + '</span>' : '') + '</div>';
+          html += '<div class="item-name" style="font-size:13px;">' + escapeHtml(p.owner || '—') + '</div>';
+          html += '<div class="status-pill project-status-pill status-project-' + p.status + '" data-id="' + p.id + '">' + PROJECT_STATUS_LABEL[p.status] + '</div>';
+          html += '<button class="del-btn edit-btn project-edit-btn" data-id="' + p.id + '" title="Edit">✎</button>';
+          html += '<button class="del-btn project-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + p.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
+        }
       });
       html += '<div class="add-row" style="grid-template-columns: 1fr 1fr 1fr 96px;">' +
         '<input type="text" class="new-project-name" placeholder="Project name" data-co="' + co.id + '">' +
@@ -1086,6 +1160,31 @@
     attachProjectHandlers();
   }
   function attachProjectHandlers() {
+    document.querySelectorAll('.project-edit-btn').forEach(function (el) {
+      el.addEventListener('click', function () { editingProjectId = el.getAttribute('data-id'); renderProjects(); });
+    });
+    document.querySelectorAll('.project-cancel-btn').forEach(function (el) {
+      el.addEventListener('click', function () { editingProjectId = null; renderProjects(); });
+    });
+    document.querySelectorAll('.project-save-btn').forEach(function (el) {
+      el.addEventListener('click', async function () {
+        var id = el.getAttribute('data-id');
+        var p = projectItems.find(function (i) { return i.id === id; });
+        var row = el.closest('.edit-row');
+        if (!p || !row) return;
+        var name = row.querySelector('.edit-project-name').value.trim();
+        if (!name) { row.querySelector('.edit-project-name').focus(); return; }
+        var patch = {
+          name: name,
+          owner: row.querySelector('.edit-project-owner').value.trim(),
+          note: row.querySelector('.edit-project-note').value.trim()
+        };
+        Object.assign(p, patch);
+        editingProjectId = null;
+        renderProjects();
+        await sbUpdate('projects', id, patch);
+      });
+    });
     document.querySelectorAll('.project-status-pill').forEach(function (el) {
       el.addEventListener('click', async function () {
         var p = projectItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
@@ -1256,7 +1355,7 @@
       if (isConflict) html += '<div class="cal-conflict-badge">⚠ Time conflict</div>';
       html += '</div><button class="del-btn cal-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + e.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
     });
-    html += '<div class="cal-add-row"><select id="calNewWho">' + WHO_NAMES.map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>' +
+    html += '<div class="cal-add-row"><select id="calNewWho"><option value="">Who\'s it for?</option>' + WHO_NAMES.map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>' +
       '<input type="time" id="calNewStart"><input type="time" id="calNewEnd">' +
       '<input type="text" id="calNewWhat" placeholder="What"><input type="text" id="calNewNote" placeholder="Note (optional)">' +
       '<button class="add-btn" id="calAddBtn">Add</button></div></div>';
@@ -1280,77 +1379,16 @@
       var whatInput = document.getElementById('calNewWhat');
       var what = whatInput.value.trim();
       if (!what) { whatInput.focus(); return; }
+      var whoSel = document.getElementById('calNewWho');
+      if (!whoSel.value) { showToast('Pick who this event is for.'); whoSel.focus(); return; }
       var row = {
-        event_date: dateStr, who: document.getElementById('calNewWho').value,
+        event_date: dateStr, who: whoSel.value,
         start_time: document.getElementById('calNewStart').value || null,
         end_time: document.getElementById('calNewEnd').value || null,
         what: what, note: document.getElementById('calNewNote').value.trim(), created_by: currentPerson()
       };
       var saved = await sbInsert('calendar_events', row);
       if (saved) { calendarItems.push(saved); renderCalendar(); }
-    });
-  }
-
-  // ============================================================
-  // WHO'S DOING WHAT
-  // ============================================================
-  function renderWhoDoing() {
-    var covered = {};
-    responsibilityItems.forEach(function (r) { covered[r.owner] = true; });
-    document.getElementById('whoTotalsStrip').innerHTML =
-      '<div class="cell grand"><div class="label">Total responsibilities</div><div class="value">' + responsibilityItems.length + '</div></div>' +
-      '<div class="cell"><div class="label">People covered</div><div class="value">' + Object.keys(covered).length + ' of ' + WHO_NAMES.length + '</div></div>';
-    var list = document.getElementById('whoList');
-    var html = '';
-    if (responsibilityItems.length === 0) html = '<div class="empty-state">Nothing assigned yet. Add the first responsibility below.</div>';
-    else responsibilityItems.forEach(function (r) {
-      var pendingConfirm = pendingWhoDeleteId === r.id;
-      html += '<div class="item-row" style="grid-template-columns: 1fr 140px 28px;" data-id="' + r.id + '">';
-      html += '<div class="item-name">' + escapeHtml(r.area) + (r.note ? '<span class="note">' + escapeHtml(r.note) + '</span>' : '') + '</div>';
-      html += '<div class="status-pill who-owner-pill" data-id="' + r.id + '">' + escapeHtml(r.owner) + '</div>';
-      html += '<button class="del-btn who-del-btn' + (pendingConfirm ? ' confirm' : '') + '" data-id="' + r.id + '">' + (pendingConfirm ? 'Sure?' : '×') + '</button></div>';
-    });
-    html += '<div class="add-row" style="grid-template-columns: 1.4fr 1fr 96px;">' +
-      '<input type="text" class="new-who-area" placeholder="Responsibility / area">' +
-      '<input type="text" class="new-who-note" placeholder="Note (optional)">' +
-      '<button class="add-btn" id="whoAddBtn">Add</button></div>';
-    list.innerHTML = html;
-    attachWhoHandlers();
-  }
-  function attachWhoHandlers() {
-    document.querySelectorAll('.who-owner-pill').forEach(function (el) {
-      el.addEventListener('click', async function () {
-        var r = responsibilityItems.find(function (i) { return i.id === el.getAttribute('data-id'); });
-        if (!r) return;
-        r.owner = WHO_NAMES[(WHO_NAMES.indexOf(r.owner) + 1) % WHO_NAMES.length];
-        renderWhoDoing();
-        await sbUpdate('responsibilities', r.id, { owner: r.owner });
-      });
-    });
-    document.querySelectorAll('.who-del-btn').forEach(function (el) {
-      el.addEventListener('click', async function () {
-        var id = el.getAttribute('data-id');
-        if (pendingWhoDeleteId === id) {
-          clearTimeout(pendingWhoDeleteTimer); pendingWhoDeleteId = null;
-          await sbDelete('responsibilities', id);
-          responsibilityItems = responsibilityItems.filter(function (i) { return i.id !== id; });
-          renderWhoDoing();
-        } else {
-          pendingWhoDeleteId = id; renderWhoDoing();
-          clearTimeout(pendingWhoDeleteTimer);
-          pendingWhoDeleteTimer = setTimeout(function () { pendingWhoDeleteId = null; renderWhoDoing(); }, 6000);
-        }
-      });
-    });
-    var addBtn = document.getElementById('whoAddBtn');
-    if (addBtn) addBtn.addEventListener('click', async function () {
-      var container = addBtn.closest('.add-row');
-      var areaInput = container.querySelector('.new-who-area');
-      var area = areaInput.value.trim();
-      if (!area) { areaInput.focus(); return; }
-      var row = { area: area, note: container.querySelector('.new-who-note').value.trim(), owner: WHO_NAMES[0], created_by: currentPerson() };
-      var saved = await sbInsert('responsibilities', row);
-      if (saved) { responsibilityItems.push(saved); renderWhoDoing(); }
     });
   }
 
@@ -1620,7 +1658,6 @@
       existingContacts: contactItems.map(function (c) { return { id: c.id, name: c.name, company: (companyById(c.company_id) || {}).name, tag: c.tag }; }),
       existingProjects: projectItems.map(function (p) { return { id: p.id, name: p.name, company: (companyById(p.company_id) || {}).name, status: p.status }; }),
       existingTodos: todoItems.map(function (t) { return { id: t.id, task: t.task, company: (companyById(t.company_id) || {}).name, status: t.status, dueDate: t.due_date }; }),
-      existingResponsibilities: responsibilityItems.map(function (r) { return { id: r.id, area: r.area, owner: r.owner }; }),
       visibleMoneyItems: moneyItems.filter(isVisibleToCurrentPerson).map(function (i) { return { id: i.id, name: i.name, category: i.category, company: (companyById(i.company_id) || {}).name, status: i.status, estCost: i.est_cost }; })
     });
   }
@@ -1657,7 +1694,6 @@
       '- contacts: fields name, company (one of companies), org (optional), info (email or phone, optional), tag (one of contactTags).\n' +
       '- projects: fields name, company (one of companies), owner (a name, free text), note (optional), status (one of projectStatuses).\n' +
       '- calendar: fields date (YYYY-MM-DD), who (must be one of people), what (title), startTime (HH:MM 24-hour, optional), endTime (HH:MM 24-hour, optional), note (optional).\n' +
-      '- who: fields area (the responsibility), owner (must be one of people), note (optional).\n' +
       '- todos: fields task, company (one of companies), dueDate (YYYY-MM-DD, optional), status (one of todoStatuses).\n\n' +
       'MATCHING RULE: compare what the user says against the "existing*" lists in CURRENT DATA. If there is exactly one plausible match for something they refer to, propose an "update" using that item\'s id instead of a duplicate. If more than one item is plausibly what they mean, ask a clarifying question and propose no action for that item yet. If nothing plausibly matches, propose "create". Apply the same assume-if-one / ask-if-several logic to any other ambiguous detail: which company, which person, which date.\n\n' +
       'Reply with ONLY a JSON object, nothing else. No markdown fences, no conversational lead-in like "Sure, here it is:" or "Perfect, I\'ll log that", no text before or after the object. This applies to every single message, including short ones - if the user just answers your own clarifying question with something like "yes" or a one-word confirmation, your response is still the full JSON object, with the confirmed action now filled in and ready in "actions", not a plain sentence acknowledging their answer. Any warmth or acknowledgment belongs inside the "reply" field, not outside the JSON. Shaped exactly like this:\n' +
@@ -1735,17 +1771,6 @@
             var erow = { event_date: f.date, who: oneOf(f.who, WHO_NAMES, WHO_NAMES[0]), what: f.what || 'Untitled', start_time: f.startTime || null, end_time: f.endTime || null, note: f.note || '', created_by: currentPerson() };
             var esaved = await sbInsert('calendar_events', erow); if (esaved) calendarItems.push(esaved);
           }
-        } else if (a.module === 'who') {
-          if (a.operation === 'update' && a.matchId) {
-            var r = responsibilityItems.find(function (i) { return i.id === a.matchId; });
-            if (r) {
-              var rp = {}; if (f.owner !== undefined) rp.owner = oneOf(f.owner, WHO_NAMES, r.owner); if (f.note !== undefined) rp.note = f.note;
-              Object.assign(r, rp); await sbUpdate('responsibilities', r.id, rp);
-            }
-          } else if (f.area) {
-            var rrow = { area: f.area, note: f.note || '', owner: oneOf(f.owner, WHO_NAMES, WHO_NAMES[0]), created_by: currentPerson() };
-            var rsaved = await sbInsert('responsibilities', rrow); if (rsaved) responsibilityItems.push(rsaved);
-          }
         } else if (a.module === 'todos') {
           var tco = companyByName(f.company);
           if (a.operation === 'update' && a.matchId) {
@@ -1761,7 +1786,7 @@
         }
       } catch (e) { console.error('action failed', a, e); }
     }
-    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderWhoDoing(); renderTodos(); renderMoney();
+    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderTodos(); renderMoney();
     pendingActions = null; renderPendingActions();
     setStatus('asstStatusBar', 'saved');
   }
@@ -1795,6 +1820,8 @@
     var input = document.getElementById('asstInput');
     var text = input.value.trim();
     if (!text || asstBusy) return;
+    // The Assistant treats "I" and "me" as whoever is logged in, so it needs a name.
+    if (!hasName()) { promptForName(); return; }
     input.value = ''; input.disabled = true; document.getElementById('asstSendBtn').disabled = true;
     chatTurns.push({ role: 'user', content: text });
     asstBusy = true; renderChatLog();
@@ -1874,11 +1901,10 @@
     contactItems = await sbSelect('contacts');
     projectItems = await sbSelect('projects');
     calendarItems = await sbSelect('calendar_events');
-    responsibilityItems = await sbSelect('responsibilities');
     todoItems = await sbSelect('todos');
     moneyItems = await sbSelect('money_items');
     moneyGrants = await sbSelect('money_grants');
-    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderWhoDoing(); renderTodos(); renderMoney();
+    renderGear(); renderContacts(); renderProjects(); renderCalendar(); renderTodos(); renderMoney();
     renderOverview();
     initScrollReveals();
     renderChatLog();
